@@ -1,0 +1,7 @@
+earthengine-api
+geopandas
+rasterio
+rioxarray
+numpy
+pandas
+python-dotenv

@@ -1,0 +1,58 @@
+# ==========================================
+# GCP / Earth Engine Credentials (CRITICAL SECURITY)
+# ==========================================
+*.json
+.env
+.env.*
+!.env.example
+Keys/
+keys/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ==========================================
+# Python Environment & Cache
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# ==========================================
+# Large Datasets & Heavy GeoTIFF Rasters
+# ==========================================
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*.tif
+data/processed/*.tiff
+data/processed/*.zip
+# Note: ml_dataset.csv is small (~1 MB) and safe to commit so teammates don't have to rerun GEE feature extraction.
+
+# ==========================================
+# Trained Model Binaries
+# ==========================================
+models/*.joblib
+models/*.pkl
+models/*.h5
+!models/.gitkeep
+
+# ==========================================
+# IDE & Operating System Artifacts
+# ==========================================
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# Logs
+# ==========================================
+*.log
