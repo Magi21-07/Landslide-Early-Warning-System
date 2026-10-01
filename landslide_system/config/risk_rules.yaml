@@ -1,0 +1,55 @@
+# config/risk_rules.yaml
+#
+# 2D Decision Matrix: Susceptibility Class x Rainfall Trigger State -> Final Risk Level
+# --------------------------------------------------------------------------------------
+# Risk logic follows a conservative, life-safety-first principle:
+#   - High static susceptibility amplifies even moderate dynamic triggers.
+#   - Low susceptibility can still escalate under CRITICAL rainfall.
+#   - The matrix must be recalibrated against local historical events before
+#     operational deployment. Values here are defensible engineering defaults.
+#
+# Susceptibility Classes (Phase 4 ML output):
+#   VERY_LOW | LOW | MODERATE | HIGH | VERY_HIGH
+#
+# Rainfall Trigger States (Phase 5.5 output):
+#   NORMAL | WATCH | WARNING | CRITICAL
+#
+# Final Risk Levels (ascending severity):
+#   MINIMAL | LOW | MODERATE | HIGH | SEVERE
+
+risk_matrix:
+
+  VERY_HIGH:
+    # Highly unstable terrain — even calm rainfall keeps risk elevated.
+    NORMAL:   MODERATE
+    WATCH:    HIGH
+    WARNING:  SEVERE
+    CRITICAL: SEVERE
+
+  HIGH:
+    # Unstable terrain — trigger state quickly escalates risk.
+    NORMAL:   LOW
+    WATCH:    MODERATE
+    WARNING:  HIGH
+    CRITICAL: SEVERE
+
+  MODERATE:
+    # Conditionally stable — risk driven primarily by dynamic rainfall.
+    NORMAL:   LOW
+    WATCH:    LOW
+    WARNING:  MODERATE
+    CRITICAL: HIGH
+
+  LOW:
+    # Generally stable — requires significant rainfall to pose risk.
+    NORMAL:   MINIMAL
+    WATCH:    LOW
+    WARNING:  LOW
+    CRITICAL: MODERATE
+
+  VERY_LOW:
+    # Stable terrain — only extreme sustained rainfall creates concern.
+    NORMAL:   MINIMAL
+    WATCH:    MINIMAL
+    WARNING:  LOW
+    CRITICAL: LOW

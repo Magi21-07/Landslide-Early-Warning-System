@@ -4,6 +4,14 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+def extract_soil_moisture(region: ee.Geometry) -> ee.Image:
+    try:
+        dataset = ee.ImageCollection("NASA/GLDAS/V021/NOAH/G025/T3H").filterBounds(region).filterDate('2020-01-01', '2020-01-02')
+        return dataset.select('SoilMoi0_10cm_inst').mean().rename('soil_moisture')
+    except Exception as e:
+        logger.error(f"Error extracting soil moisture: {e}")
+        return None
+
 def sample_cloud_features(df: pd.DataFrame, image_stack: ee.Image) -> pd.DataFrame:
     """
     Samples pixel values directly on Google's cloud using sampleRegions.
@@ -42,6 +50,7 @@ def sample_cloud_features(df: pd.DataFrame, image_stack: ee.Image) -> pd.DataFra
                 'elevation': props.get('elevation'),
                 'slope': props.get('slope'),
                 'root_cohesion': props.get('root_cohesion'),
+                'soil_moisture': props.get('soil_moisture'),
                 'label': props.get('label')
             })
             
@@ -49,4 +58,4 @@ def sample_cloud_features(df: pd.DataFrame, image_stack: ee.Image) -> pd.DataFra
         return final_df
     except Exception as e:
         logger.error(f"Error during cloud sampling: {e}")
-        return pd.DataFrame(columns=['latitude', 'longitude', 'slope', 'root_cohesion', 'elevation', 'label'])
+        return pd.DataFrame(columns=['latitude', 'longitude', 'slope', 'root_cohesion', 'elevation', 'soil_moisture', 'label'])

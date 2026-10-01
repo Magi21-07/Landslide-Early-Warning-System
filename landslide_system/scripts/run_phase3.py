@@ -7,7 +7,7 @@ import ee
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.etl.inventory_builder import generate_inventory
-from src.features.feature_sampler import sample_cloud_features
+from src.features.feature_sampler import sample_cloud_features, extract_soil_moisture
 from src.config import ROI_BOUNDS, EE_PROJECT_ID
 from src.etl.gee_extractor import initialize_gee, extract_dem, extract_vegetation
 from src.features.physics_engine import calculate_slope, calculate_root_cohesion
@@ -47,17 +47,18 @@ def main():
     slope = calculate_slope(dem)
     veg = extract_vegetation(region)
     root_cohesion = calculate_root_cohesion(veg)
-    
-    if not all([dem, slope, veg, root_cohesion]):
+    soil_moisture = extract_soil_moisture(region)
+        
+    if not all([dem, slope, veg, root_cohesion, soil_moisture]):
         logger.error("Failed to generate one or more GEE layers.")
         return
         
-    image_stack = ee.Image([dem, slope, root_cohesion])
+    image_stack = ee.Image([dem, slope, root_cohesion, soil_moisture])
     
     logger.info("Sampling raster features via GEE Cloud...")
     df = sample_cloud_features(df, image_stack)
     
-    expected_cols = ['latitude', 'longitude', 'slope', 'root_cohesion', 'elevation', 'label']
+    expected_cols = ['latitude', 'longitude', 'slope', 'root_cohesion', 'elevation', 'soil_moisture', 'label']
     for col in expected_cols:
         if col not in df.columns:
             df[col] = pd.Series(dtype=float)

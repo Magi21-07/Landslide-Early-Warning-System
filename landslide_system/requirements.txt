@@ -5,3 +5,8 @@ rioxarray
 numpy
 pandas
 python-dotenv
+scikit-learn
+xgboost
+joblib
+matplotlib
+seaborn

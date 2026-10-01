@@ -1,0 +1,39 @@
+# config/rainfall_thresholds.yaml
+#
+# Rainfall Trigger Thresholds (units: mm)
+# ----------------------------------------
+# These are BASELINE default values for a mountainous South Asian region.
+# They MUST be calibrated against local hydrology, geology, and historical
+# landslide inventory data before operational deployment.
+# Source: loosely adapted from common regional early-warning literature.
+# DO NOT treat these as scientifically validated for any specific site.
+
+thresholds:
+
+  # 24-hour (1-day) cumulative rainfall
+  # Intense short-duration rainfall is a primary triggering mechanism.
+  rainfall_1d:
+    watch:    50.0    # mm  Elevated short-duration intensity
+    warning:  100.0   # mm  Significant single-day event
+    critical: 150.0   # mm  Extreme single-day event
+
+  # 3-day cumulative rainfall
+  # Captures multi-day saturation buildup ahead of the trigger event.
+  rainfall_3d:
+    watch:    80.0    # mm
+    warning:  150.0   # mm
+    critical: 250.0   # mm
+
+  # 7-day cumulative rainfall
+  # Reflects medium-term soil saturation that reduces shear strength.
+  rainfall_7d:
+    watch:    120.0   # mm
+    warning:  220.0   # mm
+    critical: 350.0   # mm
+
+  # 15-day cumulative rainfall (antecedent saturation)
+  # Long-duration saturation substantially increases mass-movement probability.
+  rainfall_15d:
+    watch:    180.0   # mm
+    warning:  320.0   # mm
+    critical: 500.0   # mm

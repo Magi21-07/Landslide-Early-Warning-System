@@ -1,0 +1,56 @@
+# config/risk_definitions.yaml
+#
+# Standardized Risk Level Definitions
+# -------------------------------------
+# Single source of truth for all risk classification metadata.
+# UI metadata (hex colors, severity labels, descriptions) consumed by
+# downstream dashboards and API endpoints.
+# string_mappings bridges Phase 5.6 matrix outputs (MINIMAL, SEVERE, etc.)
+# to the canonical 4-tier risk level system.
+
+risk_levels:
+
+  LOW:
+    numeric_code: 1
+    machine_name: "RISK_LOW"
+    human_description: "Background risk. Normal geological conditions."
+    color_hex: "#28a745"
+    ui_severity: "SUCCESS"
+    min_score: 0.0
+    max_score: 0.25
+
+  MODERATE:
+    numeric_code: 2
+    machine_name: "RISK_MODERATE"
+    human_description: "Elevated risk. Soil saturation or slope weakness observed."
+    color_hex: "#ffc107"
+    ui_severity: "WARNING"
+    min_score: 0.25
+    max_score: 0.50
+
+  HIGH:
+    numeric_code: 3
+    machine_name: "RISK_HIGH"
+    human_description: "High risk. Heavy rainfall overlay on susceptible terrain."
+    color_hex: "#fd7e14"
+    ui_severity: "DANGER"
+    min_score: 0.50
+    max_score: 0.75
+
+  CRITICAL:
+    numeric_code: 4
+    machine_name: "RISK_CRITICAL"
+    human_description: "Critical risk. Severe landslide threat active."
+    color_hex: "#dc3545"
+    ui_severity: "CRITICAL"
+    min_score: 0.75
+    max_score: 1.00
+
+# Maps Phase 5.6 matrix outputs and alternative level names -> canonical 4-tier name
+string_mappings:
+  MINIMAL:  "LOW"
+  LOW:      "LOW"
+  MODERATE: "MODERATE"
+  HIGH:     "HIGH"
+  SEVERE:   "CRITICAL"
+  CRITICAL: "CRITICAL"
