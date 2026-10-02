@@ -32,17 +32,30 @@ class GeospatialService:
             if lon is None or lat is None:
                 continue
                 
+            name_map = {
+                "26.9124_75.7873": "Jaipur Ridge",
+                "27.5000_85.5000": "Kathmandu North",
+                "31.1046_77.1734": "Shimla Slope",
+                "31.6908_76.5177": "Hamirpur West"
+            }
+            loc_id = r.get("location_id")
+
             geom = PointGeometry(coordinates=(lon, lat))
             props = {
-                "location_id": r.get("location_id"),
-                "susceptibility_probability": r.get("susceptibility_probability"),
-                "susceptibility_class": r.get("susceptibility_class"),
-                "rainfall_7d": r.get("rainfall_7d"),
-                "rainfall_trigger_state": r.get("rainfall_trigger_state"),
-                "dynamic_risk": r.get("dynamic_risk"),
-                "risk_level": r.get("risk_level"),
-                "timestamp": r.get("timestamp"),
-                "stale": bool(r.get("stale", 0))
+                "id":                          loc_id,  # standard GeoJSON id alias
+                "location_id":                 loc_id,
+                "name":                        name_map.get(loc_id) or r.get("name") or f"Lat {lat:.2f}°, Lon {lon:.2f}°",
+                "latitude":                    lat,
+                "longitude":                   lon,
+                "susceptibility_probability":  r.get("susceptibility_probability"),
+                "probability":                 r.get("susceptibility_probability"),  # alias for frontend
+                "susceptibility_class":        r.get("susceptibility_class"),
+                "rainfall_7d":                 r.get("rainfall_7d"),
+                "rainfall_trigger_state":      r.get("rainfall_trigger_state"),
+                "dynamic_risk":                r.get("dynamic_risk"),
+                "risk_level":                  r.get("risk_level"),
+                "timestamp":                   r.get("timestamp"),
+                "stale":                       bool(r.get("stale", 0))
             }
             features.append(GeoJSONFeature(geometry=geom, properties=props))
             

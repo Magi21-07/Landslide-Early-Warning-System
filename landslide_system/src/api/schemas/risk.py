@@ -22,6 +22,11 @@ class RiskResponse(BaseModel):
     rainfall_trigger_state: Optional[str] = None
     rainfall_trigger_score: Optional[int] = None
     
+    terrain_metrics: Optional[dict] = None
+    rainfall_metrics: Optional[dict] = None
+    daily_rainfall: Optional[list] = None
+    probability: Optional[float] = None
+    
     # In some models (like SQLite history), final_risk_level is mapped as dynamic_risk
     # We will alias if needed or provide both.
     dynamic_risk: Optional[str] = Field(None, validation_alias="final_risk_level")

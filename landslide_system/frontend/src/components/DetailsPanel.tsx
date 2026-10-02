@@ -1,0 +1,180 @@
+import { Info, MapPin, CloudRain, ShieldAlert, ActivitySquare, AlertTriangle, Database } from 'lucide-react';
+import { getRiskStyle } from '../utils/riskStyles';
+import { RainfallChart } from './RainfallChart';
+
+interface DetailsPanelProps {
+  location?: any;
+  loading?: boolean;
+}
+
+export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
+  if (!location) {
+    return (
+      <section className="w-80 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-800 h-full overflow-y-auto relative z-10 font-mono">
+        <div className="flex-1 flex flex-col items-center justify-center text-zinc-600 text-[10px] uppercase tracking-widest p-6 text-center">
+          <Info className="w-8 h-8 mb-3 opacity-20" />
+          <p>AWAITING TARGET SELECTION...</p>
+        </div>
+      </section>
+    );
+  }
+
+  const riskStr = location.dynamic_risk || location.risk_level || location.risk || location.properties?.dynamic_risk || location.properties?.risk_level || location.properties?.risk || 'UNKNOWN';
+  const riskStyle = getRiskStyle(riskStr);
+  const explanations: string[] = Array.isArray(location.explanation) 
+    ? location.explanation 
+    : location.explanation 
+      ? [location.explanation] 
+      : [];
+      
+  const isStale = location.is_stale === true || location.data_age_hours > 24;
+
+  return (
+    <section className="w-80 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-800 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-950 relative z-10">
+      <div className="flex-col flex">
+        
+        {/* 1. Location Info */}
+        <div className="p-3 border-b border-zinc-800 bg-zinc-900 sticky top-0 z-20">
+          <h2 className="text-[11px] font-mono font-bold text-zinc-200 break-words flex items-start gap-1.5 uppercase">
+            <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            {location.name || location.location_id || 'UNKNOWN_TGT'}
+          </h2>
+          <div className="flex items-center gap-3 mt-1.5 ml-5 text-[9px] text-zinc-500 font-mono uppercase tracking-widest">
+            <span>LAT:{location.latitude !== undefined ? Number(location.latitude).toFixed(4) : '--'}</span>
+            <span>LON:{location.longitude !== undefined ? Number(location.longitude).toFixed(4) : '--'}</span>
+            {loading && <span className="text-blue-500 animate-pulse">FETCHING LIVE DATA...</span>}
+          </div>
+        </div>
+
+        {/* 5. Dynamic Risk (Promoted for visibility) */}
+        <div className="p-3 border-b border-zinc-800 bg-zinc-950/50">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+            <ShieldAlert className="w-3 h-3" />
+            EVAL: DYNAMIC RISK
+          </div>
+          <div className="p-2.5 border border-zinc-800 bg-black flex items-center justify-between rounded-none">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-none" style={{ backgroundColor: riskStyle.markerColor, boxShadow: `0 0 5px ${riskStyle.markerColor}` }}></span>
+              <span className="font-mono font-bold text-[11px] tracking-widest uppercase" style={{ color: riskStyle.markerColor }}>{riskStyle.id}</span>
+            </div>
+            {location.risk_score !== undefined && (
+              <span className="text-[10px] font-mono font-bold text-zinc-400">
+                SC:{Number(location.risk_score).toFixed(2)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {isStale && (
+          <div className="px-3 py-1.5 bg-red-950 border-b border-red-900 text-red-500 flex items-center gap-2 text-[9px] font-mono font-bold tracking-widest uppercase">
+            <AlertTriangle className="w-3 h-3" />
+            WARNING: STALE DATA DETECTED
+          </div>
+        )}
+        
+        {/* 2. Static Susceptibility */}
+        <div className="p-3 border-b border-zinc-800">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+            <ActivitySquare className="w-3 h-3" />
+            EVAL: STATIC SUSCEPTIBILITY
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+            <div className="bg-black p-2 border border-zinc-800 flex flex-col gap-0.5">
+              <span className="text-zinc-600 uppercase tracking-widest text-[8px]">Probability</span>
+              <span className="font-medium text-zinc-300">
+                {location.probability !== undefined ? Number(location.probability).toFixed(3) : 
+                 (location.susceptibility_probability !== undefined ? Number(location.susceptibility_probability).toFixed(3) : 'N/A')}
+              </span>
+            </div>
+            <div className="bg-black p-2 border border-zinc-800 flex flex-col gap-0.5">
+              <span className="text-zinc-600 uppercase tracking-widest text-[8px]">Class</span>
+              <span className="font-medium text-zinc-300 uppercase">
+                {location.susceptibility_class || 'UNKNOWN'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 & 4. Recent Rainfall & Chart */}
+        <div className="p-3 border-b border-zinc-800">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+            <CloudRain className="w-3 h-3" />
+            DATA: RAINFALL (15-DAY)
+          </div>
+          <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-mono mb-3">
+            <div className="bg-black border border-zinc-800 p-1.5 flex flex-col gap-0.5">
+              <span className="text-[8px] text-zinc-600 uppercase tracking-widest">1D</span>
+              <span className="text-zinc-300">{location.rainfall_1d !== undefined ? `${location.rainfall_1d}` : '-'}</span>
+            </div>
+            <div className="bg-black border border-zinc-800 p-1.5 flex flex-col gap-0.5">
+              <span className="text-[8px] text-zinc-600 uppercase tracking-widest">3D</span>
+              <span className="text-zinc-300">{location.rainfall_3d !== undefined ? `${location.rainfall_3d}` : '-'}</span>
+            </div>
+            <div className="bg-black border border-zinc-800 p-1.5 flex flex-col gap-0.5">
+              <span className="text-[8px] text-zinc-600 uppercase tracking-widest">7D</span>
+              <span className="text-zinc-300">{location.rainfall_7d !== undefined ? `${location.rainfall_7d}` : '-'}</span>
+            </div>
+            <div className="bg-black border border-zinc-800 p-1.5 flex flex-col gap-0.5">
+              <span className="text-[8px] text-zinc-600 uppercase tracking-widest">15D</span>
+              <span className="text-zinc-300">{location.rainfall_15d !== undefined ? `${location.rainfall_15d}` : '-'}</span>
+            </div>
+          </div>
+
+          <div className="grayscale opacity-90 contrast-125">
+            <RainfallChart 
+              latitude={location.latitude} 
+              longitude={location.longitude} 
+              triggerState={location.trigger_state} 
+            />
+          </div>
+        </div>
+
+        {/* 6. Data Status */}
+        <div className="p-3 border-b border-zinc-800">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+            <Database className="w-3 h-3" />
+            SYS: DATA INTEGRITY
+          </div>
+          <div className="flex flex-col gap-1 text-[10px] font-mono text-zinc-400 bg-black p-2 border border-zinc-800">
+            <div className="flex justify-between border-b border-zinc-900 pb-1">
+              <span className="text-zinc-600">SOURCE</span>
+              <span className="uppercase text-zinc-300">{location.source || 'CHIRPS'}</span>
+            </div>
+            <div className="flex justify-between border-b border-zinc-900 py-1">
+              <span className="text-zinc-600">OBS DATE</span>
+              <span className="text-zinc-300">{location.observation_date || '--'}</span>
+            </div>
+            <div className="flex justify-between pt-1">
+              <span className="text-zinc-600">STATE</span>
+              <span className="flex items-center gap-1">
+                {isStale ? (
+                   <span className="text-red-500 font-bold">STALE</span>
+                ) : (
+                   <span className="text-emerald-500 font-bold">NOMINAL</span>
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 7. Risk Explanation */}
+        {explanations.length > 0 && (
+          <div className="p-3">
+            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+              <Info className="w-3 h-3 text-zinc-600" />
+              LOG: EVAL FACTORS
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {explanations.map((exp, idx) => (
+                <li key={idx} className="text-[9px] font-mono text-zinc-400 leading-tight bg-black p-2 border-l-2 border-zinc-700">
+                  {exp}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+      </div>
+    </section>
+  );
+};

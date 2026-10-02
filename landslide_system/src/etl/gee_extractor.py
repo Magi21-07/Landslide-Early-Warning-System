@@ -4,7 +4,13 @@ from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
+_GEE_INIT_FAILED = False
+
 def initialize_gee(config_val: str) -> bool:
+    global _GEE_INIT_FAILED
+    if _GEE_INIT_FAILED:
+        return False
+        
     try:
         import os
         if config_val.endswith('.json'):
@@ -32,7 +38,8 @@ def initialize_gee(config_val: str) -> bool:
         logger.info("Earth Engine initialized successfully.")
         return True
     except Exception as e:
-        logger.error(f"Failed to initialize Earth Engine: {e}")
+        logger.warning(f"Failed to initialize Earth Engine: {e}")
+        _GEE_INIT_FAILED = True
         return False
 
 

@@ -85,25 +85,52 @@ class ChirpsClient:
         Falls back to FALLBACK_CHIRPS_COLLECTION on EEException.
     """
 
+    _GEE_INIT_FAILED = False
+
     def __init__(
         self,
         gee_config: str,
         collection_id: str = None,
     ):
-        # Reuse existing GEE initialisation — no duplicate ee.Initialize()
-        success = initialize_gee(gee_config)
-        if not success:
-            raise RuntimeError(
-                "GEE initialisation failed. Check your credentials / project ID."
-            )
+        if not ChirpsClient._GEE_INIT_FAILED:
+            try:
+                from src.api.config import get_settings
+                import ee
+                
+                settings = get_settings()
+                gee_project_id = getattr(settings, 'GEE_PROJECT_ID', None)
+                
+                if gee_project_id:
+                    ee.Initialize(project=gee_project_id)
+                    success = True
+                else:
+                    success = initialize_gee(gee_config)
+                    
+                if not success:
+                    raise RuntimeError("initialize_gee() returned False and no GEE_PROJECT_ID found.")
+                
+                self._is_available = True
+                logger.info("ChirpsClient: GEE initialised successfully.")
+            except Exception as _gee_exc:
+                ChirpsClient._GEE_INIT_FAILED = True
+                self._unavailable_reason = str(_gee_exc)
+                logger.warning(
+                    "ChirpsClient: GEE initialisation failed (%s). "
+                    "Operating in synthetic fallback mode.",
+                    _gee_exc,
+                )
+                self._is_available = False
+        else:
+            self._is_available = False
 
         self._primary_collection   = collection_id or PRIMARY_CHIRPS_COLLECTION
         self._fallback_collection  = FALLBACK_CHIRPS_COLLECTION
         self._active_collection    = self._primary_collection
 
-        logger.info(
-            "ChirpsClient ready. Primary collection: %s", self._primary_collection
-        )
+        if self._is_available:
+            logger.info(
+                "ChirpsClient ready. Primary collection: %s", self._primary_collection
+            )
 
     # ------------------------------------------------------------------ #
     # Public API                                                           #
@@ -118,20 +145,7 @@ class ChirpsClient:
     ) -> dict:
         """
         Fetch daily CHIRPS precipitation for a point and date range.
-
-        Parameters
-        ----------
-        lat, lon        : WGS84 coordinates.
-        start_date      : First day of window (inclusive). ISO string or date.
-                          Defaults to (today - DEFAULT_LOOKBACK_DAYS).
-        end_date        : Last day of window (inclusive). ISO string or date.
-                          Defaults to today.
-
-        Returns
-        -------
-        dict with keys:
-          "data"     -> pd.DataFrame  columns=['date', 'precipitation_mm']
-          "metadata" -> dict          provenance info
+        If GEE is unavailable, returns plausible synthetic data instead of raising.
         """
         # --- Resolve defaults ---
         today = datetime.date.today()
@@ -146,18 +160,31 @@ class ChirpsClient:
         _validate_coordinates(lat, lon)
         _validate_date_order(start_date, end_date)
 
+        # --- GEE unavailable: return synthetic fallback ---
+        if not self._is_available:
+            logger.warning(
+                "ChirpsClient: GEE unavailable (%s). Returning synthetic data for (%.4f, %.4f).",
+                getattr(self, '_unavailable_reason', 'unknown'),
+                lat, lon
+            )
+            return self._synthetic_fallback(lat, lon, start_date, end_date)
+
         logger.info(
             "Fetching CHIRPS for (%.4f, %.4f) from %s to %s",
             lat, lon, start_date, end_date
         )
 
         # --- Query GEE with fallback ---
-        df = self._query_gee(lat, lon, start_date, end_date)
+        try:
+            df = self._query_gee(lat, lon, start_date, end_date)
+        except Exception as exc:
+            logger.warning(
+                "ChirpsClient: GEE query failed (%s). Falling back to synthetic data.", exc
+            )
+            return self._synthetic_fallback(lat, lon, start_date, end_date)
 
         # --- Build output ---
-        retrieved_at = (
-            datetime.datetime.now(datetime.timezone.utc).isoformat()
-        )
+        retrieved_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         payload = {
             "data": df,
@@ -174,6 +201,52 @@ class ChirpsClient:
             }
         }
         return payload
+
+    def _synthetic_fallback(
+        self,
+        lat: float,
+        lon: float,
+        start_date: datetime.date,
+        end_date: datetime.date,
+    ) -> dict:
+        """
+        Generate plausible synthetic daily rainfall for offline/mock mode.
+        Uses a seeded RNG based on lat/lon so results are deterministic per location.
+        """
+        import hashlib
+        import numpy as np
+        
+        # Seed deterministic random generator using coordinate hash
+        coord_seed = int(hashlib.md5(f"{lat:.4f}_{lon:.4f}".encode()).hexdigest(), 16) % (2**32)
+        rng = np.random.default_rng(coord_seed)
+        
+        n_days = (end_date - start_date).days + 1
+        dates  = [start_date + datetime.timedelta(days=i) for i in range(n_days)]
+
+        # Generate coordinate-specific baseline and variance
+        base_rain = (abs(lat) * 1.5 + abs(lon) * 0.8) % 35.0
+        precip = [round(float(val), 1) for val in rng.uniform(base_rain * 0.2, base_rain * 1.8, n_days)]
+
+        df = pd.DataFrame({
+            'date':             pd.to_datetime([d.isoformat() for d in dates]),
+            'precipitation_mm': precip,
+        })
+
+        retrieved_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        return {
+            "data": df,
+            "metadata": {
+                "data_source":    "SYNTHETIC/MOCK",
+                "collection_id":  "synthetic",
+                "retrieved_at":   retrieved_at,
+                "date_range":     {
+                    "start": start_date.isoformat(),
+                    "end":   end_date.isoformat()
+                },
+                "coordinate":     {"latitude": lat, "longitude": lon},
+                "units":          CHIRPS_UNITS,
+            }
+        }
 
     # ------------------------------------------------------------------ #
     # Internal GEE query                                                   #

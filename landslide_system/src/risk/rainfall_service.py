@@ -84,8 +84,17 @@ class RainfallService:
 
     def __init__(self, gee_config: str):
         from src.risk.chirps_client import ChirpsClient as _ChirpsClient
-        self._client = _ChirpsClient(gee_config=gee_config)
-        logger.info("RainfallService initialised with ChirpsClient.")
+        try:
+            self._client = _ChirpsClient(gee_config=gee_config)
+            logger.info("RainfallService initialised with ChirpsClient.")
+        except Exception as exc:
+            # ChirpsClient should never raise after the resilience fix, but
+            # keep this as a belt-and-suspenders guard.
+            self._client = None
+            logger.warning(
+                "RainfallService: ChirpsClient failed to initialise (%s). "
+                "Rainfall calls will return synthetic data.", exc
+            )
 
     # ------------------------------------------------------------------ #
     # Primary interface                                                    #
@@ -116,7 +125,7 @@ class RainfallService:
                 lon=longitude,
                 start_date=start_date,
                 end_date=end_date,
-            )
+            ) if self._client else None
         except Exception as exc:
             # Check for EEException by name (avoids importing ee in service layer)
             exc_type = type(exc).__name__
@@ -129,6 +138,10 @@ class RainfallService:
                     f"Rainfall extraction failed for ({latitude}, {longitude}): {exc}"
                 ) from exc
             raise
+
+        if payload is None:
+            # Client unavailable — return synthetic data so the API stays alive
+            return self._synthetic_records(latitude, longitude, start_date, end_date, location_id)
 
         df          = payload['data']
         meta        = payload['metadata']
@@ -176,6 +189,49 @@ class RainfallService:
             "get_daily_rainfall complete: %d records returned "
             "(%d missing) for (%.4f, %.4f).",
             len(records), missing_count, latitude, longitude
+        )
+        return records
+
+    def _synthetic_records(
+        self,
+        latitude: float,
+        longitude: float,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        location_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate deterministic synthetic daily rainfall records when the
+        ChirpsClient is unavailable. Keeps the API alive in offline mode.
+        """
+        import numpy as np
+        import hashlib
+
+        # Seed deterministic random generator using coordinate hash
+        coord_seed = int(hashlib.md5(f"{latitude:.4f}_{longitude:.4f}".encode()).hexdigest(), 16) % (2**32)
+        rng = np.random.default_rng(coord_seed)
+        n_days = (end_date - start_date).days + 1
+        retrieved_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        
+        # Generate coordinate-specific baseline and variance
+        base_rain = (abs(latitude) * 1.5 + abs(longitude) * 0.8) % 35.0
+        daily_values = [round(float(val), 1) for val in rng.uniform(base_rain * 0.2, base_rain * 1.8, n_days)]
+        
+        records = []
+        for i, val in enumerate(daily_values):
+            day = start_date + datetime.timedelta(days=i)
+            records.append(DailyRainfallRecord(
+                location_id  = location_id,
+                latitude     = latitude,
+                longitude    = longitude,
+                date         = day.isoformat(),
+                rainfall_mm  = val,
+                source       = "SYNTHETIC/MOCK",
+                retrieved_at = retrieved_at,
+            ).__dict__)
+        logger.info(
+            "_synthetic_records: generated %d synthetic days for (%.4f, %.4f).",
+            n_days, latitude, longitude
         )
         return records
 
