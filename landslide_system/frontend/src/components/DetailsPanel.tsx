@@ -71,6 +71,70 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
             WARNING: STALE DATA DETECTED
           </div>
         )}
+
+        {/* 5b. Telegram Alert & Delivery Status */}
+        <div className="p-3 border-b border-zinc-800">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+            <ShieldAlert className="w-3 h-3" />
+            SYS: ALERT & DELIVERY STATUS
+          </div>
+          <div className="bg-black p-2 border border-zinc-800 flex flex-col gap-2 text-[10px] font-mono">
+            {(() => {
+              const summary = location.alert_summary;
+              const delivery = location.delivery_status;
+              
+              const alertStatusLabel = summary?.current_risk_level ? `${summary.current_risk_level} ${summary.current_risk_level === 'CRITICAL' ? 'EMERGENCY' : 'WARNING'}` : 'Not Available';
+              const triggerReason = summary?.trigger_reason || 'Not Available';
+              const triggeredAt = summary?.triggered_at ? `${new Date(summary.triggered_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC` : '--';
+              
+              const delStatus = delivery?.status || 'NOT_SENT';
+              const lastAttempt = delivery?.last_attempt_at ? `${new Date(delivery.last_attempt_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC` : '--';
+              const errorMsg = delivery?.error_message || '';
+              
+              let badgeClasses = 'bg-slate-800 text-slate-400 border-slate-700';
+              if (delStatus === 'SENT') badgeClasses = 'bg-emerald-950 text-emerald-400 border-emerald-800';
+              else if (delStatus === 'PENDING' || delStatus === 'RETRYING') badgeClasses = 'bg-amber-950 text-amber-400 border-amber-800';
+              else if (delStatus === 'FAILED') badgeClasses = 'bg-red-950 text-red-400 border-red-800';
+
+              return (
+                <>
+                  <div className="flex justify-between border-b border-zinc-900 pb-1.5">
+                    <span className="text-zinc-600">SEVERITY</span>
+                    <span className="text-zinc-300 font-bold">{alertStatusLabel}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-zinc-900 pb-1.5">
+                    <span className="text-zinc-600">REASON</span>
+                    <span className="text-zinc-300 text-right max-w-[180px] truncate" title={triggerReason}>{triggerReason}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-zinc-900 pb-1.5">
+                    <span className="text-zinc-600">TRIGGERED AT</span>
+                    <span className="text-zinc-300">{triggeredAt}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-zinc-900 pb-1.5 items-center">
+                    <span className="text-zinc-600">TELEGRAM</span>
+                    <span className={`px-1.5 py-0.5 border ${badgeClasses} font-bold uppercase`}>
+                      {delStatus}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-0.5 items-center">
+                    <span className="text-zinc-600">LAST ATTEMPT</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-zinc-300">{lastAttempt}</span>
+                      {delStatus === 'FAILED' && errorMsg && (
+                        <div className="group relative flex items-center">
+                          <Info className="w-3 h-3 text-red-500 cursor-help" />
+                          <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block w-48 p-1.5 bg-zinc-900 border border-zinc-700 text-zinc-300 text-[9px] z-50 rounded-none shadow-lg break-words">
+                            {errorMsg}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
         
         {/* 2. Static Susceptibility */}
         <div className="p-3 border-b border-zinc-800">

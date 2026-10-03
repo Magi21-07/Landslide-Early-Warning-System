@@ -1,0 +1,17 @@
+max_staleness_hours: 24
+require_valid_dynamic_data: true
+active_model_version: "v2"
+risk_alert_mapping:
+  LOW: NONE
+  MODERATE: MONITORING
+  HIGH: WARNING
+  CRITICAL: IMMEDIATE
+channels:
+  WARNING:
+    - email
+    - webhook
+  IMMEDIATE:
+    - email
+    - sms
+    - webhook
+cooldown_minutes: 30

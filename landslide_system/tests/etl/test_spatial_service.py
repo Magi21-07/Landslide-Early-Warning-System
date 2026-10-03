@@ -522,7 +522,7 @@ class TestApiContract:
 
             prov = FactorProvenance("X", SourceStatus.FALLBACK, True, "NONE")
             ms.return_value = ({"clay_percent": 25.0, "hydraulic_capacity": 15.0, "soil_depth": None}, prov)
-            mp.return_value = ({"distance_to_river_m": 1200.0, "distance_to_road_m": 450.0}, prov)
+            mp.return_value = ({"distance_to_river_m": None, "distance_to_road_m": None}, prov)
 
             result = get_static_spatial_metrics(11.6854, 76.1320)
 

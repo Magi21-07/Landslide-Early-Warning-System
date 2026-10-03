@@ -146,14 +146,31 @@ export const Sidebar = ({
                 `}
               >
                 <div className="flex items-start justify-between">
-                  <div className="font-mono font-bold text-[11px] text-zinc-300 break-words pr-2 leading-tight">
+                  <div className="font-mono font-bold text-[11px] text-zinc-300 break-words pr-2 leading-tight flex-1">
                     {loc.name || loc.location_id || 'UNKNOWN_TGT'}
                   </div>
-                  {isStale && (
-                    <span className="flex items-center gap-1 text-[8px] text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-0.5 rounded-none font-bold uppercase tracking-widest shrink-0">
-                      STALE
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {isStale && (
+                      <span className="flex items-center gap-1 text-[8px] text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-0.5 rounded-none font-bold uppercase tracking-widest shrink-0">
+                        STALE
+                      </span>
+                    )}
+                    {(() => {
+                      const alertSummary = loc.alert_summary;
+                      const isHighRisk = ['HIGH', 'CRITICAL'].includes(riskStr.toUpperCase());
+                      const isActiveAlert = (alertSummary && alertSummary.event_emitted) || isHighRisk;
+                      
+                      return isActiveAlert ? (
+                        <span className="flex items-center gap-1 text-[8px] text-red-400 bg-red-950/50 border border-red-800 px-1 py-0.5 rounded-none font-bold uppercase tracking-widest shrink-0">
+                          ALERT ACTIVE
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[8px] text-zinc-400 bg-zinc-800/50 border border-zinc-700 px-1 py-0.5 rounded-none font-bold uppercase tracking-widest shrink-0">
+                          NORMAL
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -167,6 +184,14 @@ export const Sidebar = ({
                     </span>
                   )}
                 </div>
+                {loc.alert_summary?.triggered_at && (
+                  <div className="text-[9px] font-mono text-zinc-500 mt-0.5 flex items-center gap-1">
+                    <span>TRIGGERED:</span>
+                    <span className="text-zinc-400">
+                      {new Date(loc.alert_summary.triggered_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })

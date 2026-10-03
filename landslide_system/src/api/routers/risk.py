@@ -100,6 +100,8 @@ class MockChirpsClient:
             "daily_series": [r.get("rainfall_mm", 0.0) for r in records]
         }
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
+
 @router.post(
     "/evaluate",
     response_model=RiskResponse,
@@ -110,7 +112,9 @@ class MockChirpsClient:
 )
 def evaluate_risk(
     request: CoordinateRequest,
+    background_tasks: BackgroundTasks,
     mock: bool = Query(False, description="Run in offline mock mode (deprecated)"),
+    dispatch_alerts: bool = Query(False, description="Dispatch Telegram alerts in background"),
     risk_service: RiskService = Depends(get_risk_service),
     rainfall_service: RainfallService = Depends(get_rainfall_service)
 ):
@@ -245,7 +249,7 @@ def evaluate_risk(
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "observation_date": datetime.date.today().isoformat(),
         "stale": False,
-        "data_source": "ML Pipeline v2.0 / 14-Factor",
+        "data_source": "MOCK/SYNTHETIC" if mock else "ML Pipeline v2.0 / 14-Factor",
         "ndvi": raw_features.get("ndvi_index"),
         "sar_moisture_proxy": raw_features.get("sar_soil_moisture"),
         "distance_to_river_m": raw_features.get("distance_to_river_m"),
@@ -253,6 +257,25 @@ def evaluate_risk(
     
     # Save the risk result so it appears on the dashboard batch list
     risk_service.store.save_risk_result(res_dict)
+
+    if dispatch_alerts:
+        from src.alerts.alert_evaluator import AlertEvaluator
+        from src.alerts.telegram_config import TelegramConfig
+        from src.alerts.delivery_tracker import DeliveryTracker
+        from src.alerts.telegram_async import AsyncTelegramDispatcher
+        
+        evaluator = AlertEvaluator()
+        event = evaluator.evaluate_target_risk(
+            target_id=res_dict["location_id"],
+            risk_response=res_dict
+        )
+        
+        if event.event_emitted:
+            config = TelegramConfig()
+            tracker = DeliveryTracker()
+            async_dispatcher = AsyncTelegramDispatcher(config, tracker)
+            chat_id = config.chat_id or ""
+            background_tasks.add_task(async_dispatcher.dispatch_in_background, event, chat_id)
 
     return res_dict
 
@@ -281,6 +304,7 @@ def get_latest_risk(
     description="Retrieve the latest risk evaluated for all stored target locations."
 )
 def get_targets(
+    background_tasks: BackgroundTasks,
     risk_service: RiskService = Depends(get_risk_service),
     rainfall_service: RainfallService = Depends(get_rainfall_service)
 ):
@@ -295,7 +319,7 @@ def get_targets(
     
     for lat, lon in targets:
         req = CoordinateRequest(latitude=lat, longitude=lon)
-        res = evaluate_risk(req, mock=True, risk_service=risk_service, rainfall_service=rainfall_service)
+        res = evaluate_risk(req, background_tasks=background_tasks, mock=True, risk_service=risk_service, rainfall_service=rainfall_service)
         results.append(res)
         
     return results
@@ -310,5 +334,10 @@ def get_risk_history(
     limit: int = Query(30, ge=1, le=100),
     service: RiskService = Depends(get_risk_service)
 ):
-    history = service.get_historical_risk(location_id, limit)
+    history = service.get_risk_history(location_id, limit)
+    if not history:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No historical data found for location_id: {location_id}"
+        )
     return history

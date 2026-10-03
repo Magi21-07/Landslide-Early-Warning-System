@@ -1,0 +1,47 @@
+# config/telegram_alert_policy.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 8.1 (Ext) — Telegram Alert Policy Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# Controls whether Telegram alerts are generated and under what conditions.
+# No HTTP requests are made by the engine — dispatching belongs in Phase 8.3.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Master on/off switch for all Telegram alerting
+enabled: true
+
+# Minimum risk level that qualifies for a Telegram alert.
+# Evaluated risk levels below this are always suppressed.
+minimum_risk_level: "HIGH"
+
+# Name of the environment variable containing the Telegram Bot Token.
+# The engine reads the *name* only — it does NOT read the token value.
+bot_token_env_var: "TELEGRAM_BOT_TOKEN"
+
+# Name of the environment variable containing the default Telegram Chat ID.
+# The engine reads the *name* only — it does NOT read the chat ID value.
+default_chat_id_env_var: "TELEGRAM_CHAT_ID"
+
+# Minimum minutes that must elapse between two alerts for the same target.
+cooldown_minutes: 30
+
+# Maximum age (in hours) of the dynamic data before the alert is suppressed.
+max_staleness_hours: 24
+
+# If false, stale dynamic data will always suppress the alert (recommended).
+allow_stale_alerts: false
+
+# Emit a Telegram event when risk escalates (HIGH -> CRITICAL).
+escalation_enabled: true
+
+# Emit a Telegram event when risk recovers (CRITICAL/HIGH -> lower level).
+recovery_enabled: true
+
+# Mapping of canonical risk levels to Telegram-specific alert levels.
+# NO_ALERT        — no Telegram message generated
+# TELEGRAM_WARNING  — warning-level message with risk summary & SHAP factors
+# TELEGRAM_CRITICAL — critical-level message with immediate-action header
+risk_alert_mapping:
+  LOW:      "NO_ALERT"
+  MODERATE: "NO_ALERT"
+  HIGH:     "TELEGRAM_WARNING"
+  CRITICAL: "TELEGRAM_CRITICAL"

@@ -66,8 +66,8 @@ _LITHOLOGY_FALLBACK = {
 
 # Proximity fallback — used ONLY on network failure
 _PROXIMITY_FALLBACK = {
-    "distance_to_river_m": 1200.0,
-    "distance_to_road_m":  450.0,
+    "distance_to_river_m": None,
+    "distance_to_road_m":  None,
 }
 
 
