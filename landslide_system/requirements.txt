@@ -10,3 +10,10 @@ xgboost
 joblib
 matplotlib
 seaborn
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+httpx
+shap
+scipy

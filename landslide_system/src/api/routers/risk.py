@@ -1,8 +1,12 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 import datetime
+import logging
 import os
 import pickle
+import concurrent.futures
+
+logger = logging.getLogger(__name__)
 
 from src.api.security import verify_api_key
 from src.api.dependencies import get_risk_service, get_rainfall_service
@@ -10,14 +14,59 @@ from src.api.services.risk_service import RiskService
 from src.api.schemas.common import CoordinateRequest
 from src.api.schemas.risk import RiskResponse
 from src.etl import terrain_service
+from src.etl import spatial_service
+from src.etl import sentinel_service
 from src.risk.rainfall_service import RainfallService
 
 router = APIRouter(prefix="/api/v1/risk", tags=["Landslide Risk"])
 
-# ----------------- Load ML Model ----------------- #
-model_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "landslide_model.pkl")
-with open(model_path, "rb") as f:
+# ----------------- Load ML Model & Artifacts ----------------- #
+import json
+import shap
+from src.features.feature_builder import FeatureBuilder
+
+model_dir = os.path.join(os.path.dirname(__file__), "..", "..", "models")
+with open(os.path.join(model_dir, "landslide_model.pkl"), "rb") as f:
     landslide_model = pickle.load(f)
+
+try:
+    with open(os.path.join(model_dir, "preprocessor.pkl"), "rb") as f:
+        preprocessor = pickle.load(f)
+except Exception as e:
+    preprocessor = None
+    logger.warning(f"Failed to load preprocessor: {e}")
+
+try:
+    with open(os.path.join(model_dir, "shap_explainer.pkl"), "rb") as f:
+        shap_explainer = pickle.load(f)
+except Exception as e:
+    shap_explainer = None
+    logger.warning(f"Failed to load SHAP explainer: {e}")
+
+try:
+    with open(os.path.join(model_dir, "model_metadata.json"), "r") as f:
+        model_metadata = json.load(f)
+    feature_mapping = model_metadata.get("feature_mapping", {})
+except:
+    feature_mapping = {}
+
+FACTOR_LABELS = {
+    "slope_degrees": "Terrain Slope",
+    "elevation_m": "Elevation",
+    "rainfall_3day_mm": "Rainfall (3-Day)",
+    "rainfall_15day_mm": "Rainfall (15-Day)",
+    "distance_to_river_m": "Distance to River",
+    "distance_to_road_m": "Distance to Road",
+    "soil_clay_content": "Soil Clay Content",
+    "soil_hydraulic_cond": "Soil Hydraulic Property",
+    "lithology_class": "Lithology",
+    "ndvi_index": "Vegetation Index (NDVI)",
+    "tree_cover_density": "Tree Cover Density",
+    "sar_soil_moisture": "SAR Soil-Moisture Proxy",
+    "weathering_index": "Weathering",
+    "land_use_settlement": "Settlement / Land-Use Exposure"
+}
+
 
 # Mock chirps_client for exact snippet compatibility
 class MockChirpsClient:
@@ -69,22 +118,28 @@ def evaluate_risk(
 
     chirps_client = MockChirpsClient(rainfall_service)
 
-    # 1. Fetch dynamic terrain features (Zero hardcoded bounding boxes)
-    terrain = terrain_service.get_terrain_features(lat, lon)
+    # We now use the FeatureBuilder to construct the exact 14 factors safely
+    feature_builder = FeatureBuilder(rainfall_service)
+    
+    # 1. & 2. & 6. Extracted securely via FeatureBuilder
+    raw_features, meta = feature_builder.get_features(lat, lon)
+    
+    # Assert semantic feature count exactly 14
+    assert len(raw_features) == 14, f"ML input vector must be exactly 14 features, got {len(raw_features)}"
 
-    # 2. Fetch rolling 15-day rainfall series
-    rainfall = chirps_client.get_recent_rainfall(lat, lon, days=15)
-
-    # 3. Construct feature array X
-    X = [[
-        terrain["slope_degrees"],
-        terrain["elevation_m"],
-        rainfall["rainfall_3day"],
-        rainfall["rainfall_15day"]
-    ]]
-
-    # 4. Predict via Trained ML Model
-    probability = float(landslide_model.predict_proba(X)[0][1])
+    # Convert to DataFrame for preprocessing
+    import pandas as pd
+    import numpy as np
+    
+    X_df = pd.DataFrame([raw_features])
+    
+    if preprocessor:
+        X_processed = preprocessor.transform(X_df)
+    else:
+        X_processed = X_df
+        
+    # 4. Predict via Trained ML Model (probability must be float [0, 1])
+    probability = float(landslide_model.predict_proba(X_processed)[0][1])
 
     # 5. Determine severity class
     if probability < 0.30:
@@ -95,6 +150,75 @@ def evaluate_risk(
         risk_level = "HIGH"
     else:
         risk_level = "CRITICAL"
+        
+    # Calculate SHAP values
+    top_risk_factors = []
+    if shap_explainer is not None:
+        try:
+            shap_vals = shap_explainer.shap_values(X_processed)
+            if isinstance(shap_vals, list):
+                shap_vals = shap_vals[1] # positive class
+            
+            # shape could be (1, n_features)
+            shap_array = shap_vals[0] if len(shap_vals.shape) > 1 else shap_vals
+            
+            # Aggregate to original factors
+            aggregated_shap = {k: 0.0 for k in FACTOR_LABELS.keys()}
+            
+            for i, col in enumerate(X_processed.columns):
+                orig_col = feature_mapping.get(col, col)
+                if orig_col in aggregated_shap:
+                    aggregated_shap[orig_col] += float(shap_array[i])
+                    
+            total_abs_shap = sum(abs(v) for v in aggregated_shap.values())
+            
+            if total_abs_shap > 0:
+                for factor, val in aggregated_shap.items():
+                    share = (abs(val) / total_abs_shap) * 100
+                    if share > 0:
+                        sign_str = "+" if val >= 0 else "-"
+                        # Create generic label: "Rainfall (15-Day): +32%"
+                        top_risk_factors.append({
+                            "factor": FACTOR_LABELS.get(factor, factor),
+                            "contribution": f"{sign_str}{round(share)}%",
+                            "_raw_abs": abs(val) # for sorting
+                        })
+                # Sort descending
+                top_risk_factors.sort(key=lambda x: x["_raw_abs"], reverse=True)
+                # Cleanup internal sorting key
+                for f in top_risk_factors:
+                    del f["_raw_abs"]
+        except Exception as e:
+            logger.warning(f"SHAP explanation failed: {e}")
+
+    # Fetch individual structures for backward compatibility of API response
+    terrain = {"slope_degrees": raw_features.get("slope_degrees"), "elevation_m": raw_features.get("elevation_m")}
+    
+    # Build rainfall dict using chirps_client (already fetched inside FeatureBuilder; re-use values)
+    chirps_data = chirps_client.get_recent_rainfall(lat, lon, days=15)
+    rainfall = {
+        "rainfall_1day": chirps_data.get("rainfall_1day", 0.0),
+        "rainfall_3day": chirps_data.get("rainfall_3day", 0.0),
+        "rainfall_7day": chirps_data.get("rainfall_7day", 0.0),
+        "rainfall_15day": chirps_data.get("rainfall_15day", 0.0),
+        "daily_series": chirps_data.get("daily_series", [])
+    }
+    
+    def fetch_static_spatial():
+        try:
+            return spatial_service.get_static_spatial_metrics(lat, lon)
+        except:
+            return None
+            
+    def fetch_remote_sensing():
+        try:
+            return sentinel_service.get_remote_sensing_features(lat, lon).to_api_dict()
+        except:
+            return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        static_spatial = executor.submit(fetch_static_spatial).result()
+        remote_sensing = executor.submit(fetch_remote_sensing).result()
 
     res_dict = {
         "location_id": f"{lat:.4f}_{lon:.4f}",
@@ -107,16 +231,24 @@ def evaluate_risk(
         "susceptibility_probability": round(probability, 3),
         "terrain_metrics": terrain,
         "rainfall_metrics": rainfall,
-        "daily_rainfall": rainfall["daily_series"],
-        "rainfall_1d": rainfall["rainfall_1day"],
-        "rainfall_3d": rainfall["rainfall_3day"],
-        "rainfall_7d": rainfall["rainfall_7day"],
-        "rainfall_15d": rainfall["rainfall_15day"],
-        "model_info": "RandomForestClassifier_v1.0",
+        "spatial_metrics": static_spatial,
+        "remote_sensing_metrics": remote_sensing,
+        "top_risk_factors": top_risk_factors,
+        "factor_metadata": meta.get("feature_metadata", {}),
+        "daily_rainfall": rainfall.get("daily_series", []),
+        "rainfall_1d": rainfall.get("rainfall_1day", 0.0),
+        "rainfall_3d": rainfall.get("rainfall_3day", 0.0),
+        "rainfall_7d": rainfall.get("rainfall_7day", 0.0),
+        "rainfall_15d": rainfall.get("rainfall_15day", 0.0),
+        "model_info": f"XGBoostClassifier_v2.0",
+        "data_mode": "REAL" if not mock else "MOCK",
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "observation_date": datetime.date.today().isoformat(),
         "stale": False,
-        "data_source": "ML Pipeline",
+        "data_source": "ML Pipeline v2.0 / 14-Factor",
+        "ndvi": raw_features.get("ndvi_index"),
+        "sar_moisture_proxy": raw_features.get("sar_soil_moisture"),
+        "distance_to_river_m": raw_features.get("distance_to_river_m"),
     }
     
     # Save the risk result so it appears on the dashboard batch list

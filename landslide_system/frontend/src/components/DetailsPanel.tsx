@@ -1,4 +1,4 @@
-import { Info, MapPin, CloudRain, ShieldAlert, ActivitySquare, AlertTriangle, Database } from 'lucide-react';
+import { Info, MapPin, CloudRain, ShieldAlert, ActivitySquare, AlertTriangle, Database, BarChart3, Activity } from 'lucide-react';
 import { getRiskStyle } from '../utils/riskStyles';
 import { RainfallChart } from './RainfallChart';
 
@@ -157,7 +157,65 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
           </div>
         </div>
 
-        {/* 7. Risk Explanation */}
+        {/* 7. Risk Factor Breakdown (SHAP) */}
+        {location.top_risk_factors && location.top_risk_factors.length > 0 && (
+          <div className="p-3 border-b border-zinc-800">
+            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+              <BarChart3 className="w-3 h-3" />
+              EVAL: TOP RISK FACTORS (SHAP)
+            </div>
+            <div className="flex flex-col gap-2">
+              {location.top_risk_factors.slice(0, 5).map((rf: any, idx: number) => {
+                const isPositive = rf.contribution.startsWith('+');
+                const val = parseFloat(rf.contribution.replace(/[+%\\-]/g, ''));
+                return (
+                  <div key={idx} className="flex flex-col gap-1">
+                    <div className="flex justify-between items-end text-[9px] font-mono uppercase tracking-widest">
+                      <span className="text-zinc-300 truncate pr-2">{rf.factor}</span>
+                      <span className={isPositive ? "text-red-400 font-bold" : "text-emerald-400 font-bold"}>{rf.contribution}</span>
+                    </div>
+                    <div className="h-1 bg-zinc-900 w-full overflow-hidden">
+                      <div 
+                        className={`h-full ${isPositive ? "bg-red-500" : "bg-emerald-500"}`} 
+                        style={{ width: `${Math.min(val, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 8. Dynamic Mini-Metrics */}
+        <div className="p-3 border-b border-zinc-800">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+            <Activity className="w-3 h-3" />
+            EVAL: SATELLITE & SPATIAL METRICS
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+            <div className="bg-black p-2 border border-zinc-800 flex flex-col gap-0.5">
+              <span className="text-zinc-600 uppercase tracking-widest text-[8px]">NDVI</span>
+              <span className="font-medium text-zinc-300">
+                {location.ndvi !== undefined && location.ndvi !== null ? Number(location.ndvi).toFixed(3) : 'UNAVAILABLE'}
+              </span>
+            </div>
+            <div className="bg-black p-2 border border-zinc-800 flex flex-col gap-0.5">
+              <span className="text-zinc-600 uppercase tracking-widest text-[8px]">SAR Moisture Proxy</span>
+              <span className="font-medium text-zinc-300">
+                {location.sar_moisture_proxy !== undefined && location.sar_moisture_proxy !== null ? `${Number(location.sar_moisture_proxy).toFixed(1)} dB` : 'UNAVAILABLE'}
+              </span>
+            </div>
+            <div className="bg-black p-2 border border-zinc-800 flex flex-col gap-0.5 col-span-2">
+              <span className="text-zinc-600 uppercase tracking-widest text-[8px]">Distance to River</span>
+              <span className="font-medium text-zinc-300">
+                {location.distance_to_river_m !== undefined && location.distance_to_river_m !== null ? `${Number(location.distance_to_river_m).toFixed(1)} m` : 'UNAVAILABLE'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 9. Risk Explanation */}
         {explanations.length > 0 && (
           <div className="p-3">
             <div className="flex items-center gap-1.5 mb-2 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
