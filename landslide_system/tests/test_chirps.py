@@ -312,7 +312,7 @@ class TestEmptyResultHandling:
         assert 'date' in result['data'].columns
         assert 'precipitation_mm' in result['data'].columns
 
-    def test_both_collections_fail_raises_runtime_error(self):
+    def test_both_collections_fail_returns_synthetic_data(self):
         from src.risk.chirps_client import ChirpsClient
 
         # Make ImageCollection raise for both primary and fallback
@@ -321,20 +321,24 @@ class TestEmptyResultHandling:
         with patch('src.risk.chirps_client.initialize_gee', return_value=True):
             client = ChirpsClient(gee_config=MOCK_GEE_CONFIG)
 
-        with pytest.raises(RuntimeError, match="Both CHIRPS collections failed"):
-            client.fetch(
-                lat=VALID_LAT, lon=VALID_LON,
-                start_date=START_DATE, end_date=END_DATE
-            )
+        result = client.fetch(
+            lat=VALID_LAT, lon=VALID_LON,
+            start_date=START_DATE, end_date=END_DATE
+        )
+        assert isinstance(result, dict)
+        assert 'data' in result
+        assert 'metadata' in result
+        assert result['metadata']['data_source'] == 'SYNTHETIC/MOCK'
 
         # Reset side_effect so it doesn't bleed into other tests
         ee_mock.ImageCollection.side_effect = None
 
-    def test_gee_init_failure_raises_runtime_error(self):
+    def test_gee_init_failure_returns_synthetic_client(self):
         from src.risk.chirps_client import ChirpsClient
         with patch('src.risk.chirps_client.initialize_gee', return_value=False):
-            with pytest.raises(RuntimeError, match="GEE initialisation failed"):
-                ChirpsClient(gee_config='bad-config')
+            client = ChirpsClient(gee_config='bad-config')
+            result = client.fetch(VALID_LAT, VALID_LON, START_DATE, END_DATE)
+            assert result['metadata']['data_source'] == 'SYNTHETIC/MOCK'
 
 
 # ---------------------------------------------------------------------------

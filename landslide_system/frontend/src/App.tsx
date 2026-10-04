@@ -5,8 +5,10 @@ import { DetailsPanel } from './components/DetailsPanel';
 import { MapArea } from './components/MapArea';
 import { StatusBar } from './components/StatusBar';
 import { getSystemStatus, getRiskMap, getRiskAtLocation } from './services/api';
+import { Routes, Route } from 'react-router-dom';
+import DemoPage from './pages/DemoPage';
 
-function App() {
+function Dashboard() {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
   const [sysStatus, setSysStatus] = useState<any>(null);
@@ -135,6 +137,15 @@ function App() {
 
       <StatusBar statusObj={sysStatus} error={sysError} />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/demo" element={<DemoPage />} />
+    </Routes>
   );
 }
 export default App;

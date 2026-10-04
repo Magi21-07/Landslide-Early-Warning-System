@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 
 from src.api.config import get_settings
-from src.api.routers import health, landslide, risk, rainfall, geospatial, alerts
+from src.api.routers import health, landslide, risk, rainfall, geospatial, alerts, demo
 from src.api.middleware import CorrelationIDMiddleware, StructuredLoggingMiddleware
 from src.api.exceptions import global_exception_handler, value_error_handler, validation_exception_handler
 
@@ -39,6 +39,7 @@ app.include_router(risk.router)
 app.include_router(rainfall.router)
 app.include_router(geospatial.router)
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
+app.include_router(demo.router)
 
 @app.get("/")
 def root():

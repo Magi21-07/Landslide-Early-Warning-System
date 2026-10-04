@@ -61,9 +61,11 @@ def test_cache_mechanism():
     cached = _get_from_cache(cache_key)
     assert cached == data
 
+@patch("src.etl.sentinel_service._get_from_cache")
 @patch("src.etl.sentinel_service.get_sentinel2_features")
 @patch("src.etl.sentinel_service.get_sentinel1_features")
-def test_remote_sensing_features_miss(mock_s1, mock_s2):
+def test_remote_sensing_features_miss(mock_s1, mock_s2, mock_cache):
+    mock_cache.side_effect = [None, {"sentinel2": {"ndvi": 0.5}, "sentinel1": {"vv_db": -10.0}}]
     mock_s2.return_value = {"ndvi": 0.5, "status": "LATEST_AVAILABLE", "scene_id": "s2_scene"}
     mock_s1.return_value = {"vv_db": -10.0, "vh_db": -15.0, "status": "LATEST_AVAILABLE", "scene_id": "s1_scene"}
     

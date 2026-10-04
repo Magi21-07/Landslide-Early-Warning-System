@@ -57,3 +57,31 @@ export const getRainfallSummary = async (latitude: number, longitude: number) =>
   const res = await apiClient.get('/rainfall/summary', { params: { latitude, longitude } });
   return res.data;
 };
+
+export interface DemoSimulationRequest {
+  target_id?: string;
+  rainfall_3d_mm: number;
+  soil_moisture_pct: number;
+  terrain_slope: number;
+  trigger_telegram: boolean;
+}
+
+export interface DemoSimulationResponse {
+  simulation_id: string;
+  target_id: string;
+  applied_overrides: Record<string, number>;
+  risk_response: {
+    risk_level: string;
+    risk_score?: number;
+    probability: number;
+    top_risk_factors?: Array<{ factor: string; contribution: string }>;
+    top_shap_factors?: Array<{ factor: string; shap_value: number }>;
+  };
+  alert_summary?: Record<string, unknown>;
+  delivery_status?: Record<string, unknown>;
+}
+
+export const simulateRiskScenario = async (payload: DemoSimulationRequest): Promise<DemoSimulationResponse> => {
+  const res = await apiClient.post('/demo/simulate', payload);
+  return res.data;
+};

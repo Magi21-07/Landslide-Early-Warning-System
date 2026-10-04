@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getRiskStyle } from '../utils/riskStyles';
 
 interface SidebarProps {
@@ -69,7 +70,13 @@ export const Sidebar = ({
   return (
     <aside className="w-72 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-800 h-full relative z-10">
       <div className="p-3 border-b border-zinc-800 bg-zinc-900 flex flex-col gap-2">
-        <h3 className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Target Selection</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Target Selection</h3>
+          <Link to="/demo" className="flex items-center gap-1.5 px-2 py-1 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 rounded transition-colors group">
+            <Zap className="w-3 h-3 text-amber-400 group-hover:text-amber-300" />
+            <span className="text-[9px] font-mono font-bold text-blue-200 uppercase tracking-widest whitespace-nowrap">Live Demo Simulator</span>
+          </Link>
+        </div>
         
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-2 top-1.5 text-zinc-500" />
