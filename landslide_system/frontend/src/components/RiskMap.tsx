@@ -389,7 +389,7 @@ export const RiskMap = ({
       </div>
 
       {loading && (
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20 backdrop-blur-sm">
+        <div className="absolute inset-0 bg-[#172331]/60 flex items-center justify-center z-20 backdrop-blur-sm">
           <div className="flex flex-col items-center text-zinc-400 bg-zinc-900 p-4 border border-zinc-700 font-mono text-[10px] uppercase tracking-widest">
             <Loader2 className="w-6 h-6 animate-spin mb-2 text-blue-500" />
             LOADING MAP DATA...
@@ -398,8 +398,8 @@ export const RiskMap = ({
       )}
 
       {error && !loading && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-          <div className="flex flex-col items-center text-red-500 bg-zinc-900 p-6 border border-red-900 max-w-sm text-center font-mono">
+        <div className="absolute inset-0 bg-[#172331]/70 flex items-center justify-center z-20">
+          <div className="flex flex-col items-center text-[#D94B4B] bg-zinc-900 p-6 border border-red-900 max-w-sm text-center font-mono">
             <AlertCircle className="w-8 h-8 mb-3" />
             <h3 className="font-bold text-[10px] uppercase tracking-widest mb-1">DATA ERROR</h3>
             <p className="text-[10px] text-zinc-400">{error}</p>

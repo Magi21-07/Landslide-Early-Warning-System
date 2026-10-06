@@ -68,34 +68,34 @@ export const Sidebar = ({
   };
 
   return (
-    <aside className="w-72 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-800 h-full relative z-10">
-      <div className="p-3 border-b border-zinc-800 bg-zinc-900 flex flex-col gap-2">
+    <aside className="w-72 shrink-0 flex flex-col bg-[#314A5E] border-r border-[#526D82] h-full relative z-10">
+      <div className="p-3 border-b border-[#526D82] bg-[#314A5E] flex flex-col gap-2">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Target Selection</h3>
+          <h3 className="text-[10px] font-['IBM_Plex_Mono',monospace] font-bold text-[#526D82] uppercase tracking-widest">Target Selection</h3>
           <Link to="/demo" className="flex items-center gap-1.5 px-2 py-1 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700/50 rounded transition-colors group">
-            <Zap className="w-3 h-3 text-amber-400 group-hover:text-amber-300" />
-            <span className="text-[9px] font-mono font-bold text-blue-200 uppercase tracking-widest whitespace-nowrap">Live Demo Simulator</span>
+            <Zap className="w-3 h-3 text-[#E6A23C] group-hover:text-amber-300" />
+            <span className="text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-blue-200 uppercase tracking-widest whitespace-nowrap">Live Demo Simulator</span>
           </Link>
         </div>
         
         <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-2 top-1.5 text-zinc-500" />
+          <Search className="w-3.5 h-3.5 absolute left-2 top-1.5 text-[#BFD5E2]" />
           <input 
             type="text" 
             placeholder="Query ID..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-7 pr-7 py-1 text-[11px] font-mono border border-zinc-700 bg-zinc-950 text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 rounded-none transition-colors"
+            className="w-full pl-7 pr-7 py-1 text-[11px] font-['IBM_Plex_Mono',monospace] border border-[#526D82] bg-[#172331] text-[#F2F7FA] placeholder-zinc-600 focus:outline-none focus:border-cyan-500 rounded-xl transition-colors"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-2 top-1 text-zinc-500 hover:text-zinc-300 text-xs font-bold">×</button>
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1 text-[#BFD5E2] hover:text-[#F2F7FA] text-xs font-bold">×</button>
           )}
         </div>
         
-        <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500 uppercase tracking-widest">
+        <div className="flex items-center justify-between text-[9px] font-['IBM_Plex_Mono',monospace] text-[#BFD5E2] uppercase tracking-widest">
           <span>{filteredLocations.length} Targets</span>
           <select 
-            className="bg-transparent text-zinc-300 border-none focus:outline-none cursor-pointer"
+            className="bg-transparent text-[#F2F7FA] border-none focus:outline-none cursor-pointer"
             value={riskFilter}
             onChange={(e) => setRiskFilter(e.target.value)}
           >
@@ -109,30 +109,30 @@ export const Sidebar = ({
       </div>
       
       {/* Coordinate Search */}
-      <div className="p-2 border-b border-zinc-800 bg-zinc-900/50">
+      <div className="p-2 border-b border-[#526D82] bg-[#314A5E]">
         <form onSubmit={handleCoordSubmit} className="flex flex-col gap-1.5">
           <div className="flex gap-1">
             <input 
               type="text" placeholder="LAT" value={lat}
               onChange={e => setLat(sanitizeCoord(e.target.value))}
-              className="w-full px-1.5 py-1 text-[10px] font-mono border border-zinc-700 bg-zinc-950 text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 rounded-none"
+              className="w-full px-1.5 py-1 text-[10px] font-['IBM_Plex_Mono',monospace] border border-[#526D82] bg-[#172331] text-[#F2F7FA] placeholder-zinc-600 focus:outline-none focus:border-cyan-500 rounded-xl"
             />
             <input 
               type="text" placeholder="LON" value={lon}
               onChange={e => setLon(sanitizeCoord(e.target.value))}
-              className="w-full px-1.5 py-1 text-[10px] font-mono border border-zinc-700 bg-zinc-950 text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 rounded-none"
+              className="w-full px-1.5 py-1 text-[10px] font-['IBM_Plex_Mono',monospace] border border-[#526D82] bg-[#172331] text-[#F2F7FA] placeholder-zinc-600 focus:outline-none focus:border-cyan-500 rounded-xl"
             />
-            <button type="submit" disabled={isSearching} className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 px-2 py-1 rounded-none text-[10px] font-mono font-bold w-10 flex items-center justify-center">
+            <button type="submit" disabled={isSearching} className="bg-[#314A5E] hover:bg-zinc-700 border border-[#526D82] text-[#F2F7FA] px-2 py-1 rounded-xl text-[10px] font-['IBM_Plex_Mono',monospace] font-bold w-10 flex items-center justify-center">
               {isSearching ? '...' : 'GO'}
             </button>
           </div>
-          {coordError && <div className="text-[9px] font-mono text-red-500 uppercase tracking-widest">{coordError}</div>}
+          {coordError && <div className="text-[9px] font-['IBM_Plex_Mono',monospace] text-[#D94B4B] uppercase tracking-widest">{coordError}</div>}
         </form>
       </div>
 
       <div className="flex-1 overflow-y-auto flex flex-col scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-950">
         {filteredLocations.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-zinc-600 text-xs p-6 font-mono text-center">
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-600 text-xs p-6 font-['IBM_Plex_Mono',monospace] text-center">
             <MapPin className="w-6 h-6 mb-2 opacity-20" />
             <p>NO TARGETS FOUND</p>
           </div>
@@ -148,17 +148,17 @@ export const Sidebar = ({
               <div 
                 key={locId}
                 onClick={() => onSelect(locId)}
-                className={`p-2 border-b border-zinc-900 cursor-pointer transition-colors flex flex-col gap-1.5
-                  ${isSelected ? 'bg-zinc-800/80 border-l-2 border-l-blue-500' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'}
+                className={`p-2 border-b border-[#526D82] cursor-pointer transition-colors flex flex-col gap-1.5
+                  ${isSelected ? 'bg-[#172331] border-l-2 border-l-[#06b6d4]' : 'hover:bg-[#172331]/50 border-l-2 border-l-transparent'}
                 `}
               >
                 <div className="flex items-start justify-between">
-                  <div className="font-mono font-bold text-[11px] text-zinc-300 break-words pr-2 leading-tight flex-1">
+                  <div className="font-['IBM_Plex_Mono',monospace] font-bold text-[11px] text-[#F2F7FA] break-words pr-2 leading-tight flex-1">
                     {loc.name || loc.location_id || 'UNKNOWN_TGT'}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {isStale && (
-                      <span className="flex items-center gap-1 text-[8px] text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-0.5 rounded-none font-bold uppercase tracking-widest shrink-0">
+                      <span className="flex items-center gap-1 text-[8px] text-[#E6A23C] bg-[#E6A23C]/10 border border-amber-500/20 px-1 py-0.5 rounded-xl font-bold uppercase tracking-widest shrink-0">
                         STALE
                       </span>
                     )}
@@ -168,11 +168,11 @@ export const Sidebar = ({
                       const isActiveAlert = (alertSummary && alertSummary.event_emitted) || isHighRisk;
                       
                       return isActiveAlert ? (
-                        <span className="flex items-center gap-1 text-[8px] text-red-400 bg-red-950/50 border border-red-800 px-1 py-0.5 rounded-none font-bold uppercase tracking-widest shrink-0">
+                        <span className="flex items-center gap-1 text-[8px] text-[#D94B4B] bg-red-950/50 border border-red-800 px-1 py-0.5 rounded-xl font-bold uppercase tracking-widest shrink-0">
                           ALERT ACTIVE
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-[8px] text-zinc-400 bg-zinc-800/50 border border-zinc-700 px-1 py-0.5 rounded-none font-bold uppercase tracking-widest shrink-0">
+                        <span className="flex items-center gap-1 text-[8px] text-[#BFD5E2] bg-[#172331] border border-[#526D82] px-1 py-0.5 rounded-xl font-bold uppercase tracking-widest shrink-0">
                           NORMAL
                         </span>
                       );
@@ -181,20 +181,20 @@ export const Sidebar = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-none" style={{ backgroundColor: style.markerColor }}></span>
-                  <span className={`text-[9px] font-mono font-bold uppercase tracking-widest`} style={{ color: style.markerColor }}>
+                  <span className="w-1.5 h-1.5 rounded-xl" style={{ backgroundColor: style.markerColor }}></span>
+                  <span className={`text-[9px] font-['IBM_Plex_Mono',monospace] font-bold uppercase tracking-widest`} style={{ color: style.markerColor }}>
                     {style.id}
                   </span>
                   {loc.risk_score !== undefined && (
-                    <span className="text-[9px] text-zinc-500 font-mono ml-auto">
+                    <span className="text-[9px] text-[#BFD5E2] font-['IBM_Plex_Mono',monospace] ml-auto">
                       SC: {Number(loc.risk_score).toFixed(2)}
                     </span>
                   )}
                 </div>
                 {loc.alert_summary?.triggered_at && (
-                  <div className="text-[9px] font-mono text-zinc-500 mt-0.5 flex items-center gap-1">
+                  <div className="text-[9px] font-['IBM_Plex_Mono',monospace] text-[#BFD5E2] mt-0.5 flex items-center gap-1">
                     <span>TRIGGERED:</span>
-                    <span className="text-zinc-400">
+                    <span className="text-[#526D82]">
                       {new Date(loc.alert_summary.triggered_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC
                     </span>
                   </div>

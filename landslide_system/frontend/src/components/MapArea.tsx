@@ -13,7 +13,7 @@ interface MapAreaProps {
 
 export const MapArea = ({ mapData, loading, error, selectedLocationId, onFeatureSelect, searchQuery, riskFilter, customView }: MapAreaProps) => {
   return (
-    <main className="flex-1 bg-zinc-950 relative overflow-hidden min-h-0">
+    <main className="flex-1 bg-[#172331] relative overflow-hidden min-h-0">
       <RiskMap 
          mapData={mapData} 
          loading={loading}

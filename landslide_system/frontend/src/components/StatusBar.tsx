@@ -21,8 +21,8 @@ export const StatusBar = ({ statusObj, error }: { statusObj?: any, error?: strin
       </div>
       
       <div className="flex items-center gap-1.5">
-        {!isOnline && <AlertTriangle className="w-3 h-3 text-red-500" />}
-        <span className={isOnline ? 'text-zinc-500' : 'text-red-500'}>
+        {!isOnline && <AlertTriangle className="w-3 h-3 text-[#D94B4B]" />}
+        <span className={isOnline ? 'text-zinc-500' : 'text-[#D94B4B]'}>
            {isOnline ? 'SYSTEM NOMINAL' : error || 'SYSTEM OFFLINE'}
         </span>
       </div>

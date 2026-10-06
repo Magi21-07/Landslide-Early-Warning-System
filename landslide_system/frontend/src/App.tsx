@@ -23,7 +23,7 @@ function Dashboard() {
   // fetchedLocation: result from /risk/evaluate (coordinate search or sidebar live-fetch)
   const [fetchedLocation, setFetchedLocation] = useState<any>(null);
   const [liveLoading, setLiveLoading] = useState(false);
-  const [customView, setCustomView] = useState<{center: [number, number], zoom: number} | null>(null);
+  const [customView, setCustomView] = useState<{ center: [number, number], zoom: number } | null>(null);
 
   // Initial data load
   useEffect(() => {
@@ -100,16 +100,16 @@ function Dashboard() {
 
   const selectedLocation = fetchedLocation
     ? {
-        ...staticLocation,    // static fields: susceptibility_class, rainfall_7d, etc.
-        ...fetchedLocation,   // live fields override: risk_level, dynamic_risk, etc.
-      }
+      ...staticLocation,    // static fields: susceptibility_class, rainfall_7d, etc.
+      ...fetchedLocation,   // live fields override: risk_level, dynamic_risk, etc.
+    }
     : staticLocation;
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-zinc-950 font-sans text-zinc-300 antialiased selection:bg-blue-900 selection:text-white">
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-[#172331] text-[#F2F7FA] font-['IBM_Plex_Mono',monospace] antialiased selection:bg-[#3B82A0] selection:text-[#0b0d10]">
       <Header status={sysStatus ? 'Operational' : sysError || 'Connecting...'} />
 
-      <div className="flex-1 flex overflow-hidden border-t border-zinc-800">
+      <div className="flex-1 flex overflow-hidden border-t border-[#526D82]">
         <Sidebar
           locations={locations}
           selectedLocationId={selectedLocationId}

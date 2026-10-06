@@ -50,30 +50,30 @@ export const RainfallChart = ({ latitude, longitude, triggerState }: RainfallCha
 
   return (
     <div className="w-full flex flex-col gap-2 font-mono">
-      <div className="flex justify-between items-center bg-black p-2 border border-zinc-800 rounded-none">
+      <div className="flex justify-between items-center bg-[#172331] p-2 border border-zinc-800 rounded-xl">
         <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">Trigger State</span>
         <span className={`text-[9px] font-bold uppercase tracking-widest ${style.textColor}`}>
           {triggerState || 'UNKNOWN'}
         </span>
       </div>
       
-      <div className="h-44 w-full relative mt-1 bg-black border border-zinc-800 p-2 pt-4 rounded-none">
+      <div className="h-44 w-full relative mt-1 bg-[#172331] border border-zinc-800 p-2 pt-4 rounded-xl">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10 text-zinc-500 text-[10px] uppercase tracking-widest">
-            <Loader2 className="w-5 h-5 animate-spin mb-1 text-zinc-600" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#172331]/80 z-10 text-zinc-500 text-[10px] uppercase tracking-widest">
+            <Loader2 className="w-5 h-5 animate-spin mb-1 text-[#526D82]" />
             LOADING TRACE...
           </div>
         )}
         
         {error && !loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10 text-red-500 text-[10px] uppercase tracking-widest text-center p-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#172331] z-10 text-[#D94B4B] text-[10px] uppercase tracking-widest text-center p-2">
             <AlertCircle className="w-5 h-5 mb-1" />
             {error}
           </div>
         )}
         
         {!loading && !error && data.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10 text-zinc-600 text-[10px] uppercase tracking-widest">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#172331] z-10 text-[#526D82] text-[10px] uppercase tracking-widest">
             NO TRACE DATA
           </div>
         )}
