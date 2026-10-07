@@ -270,6 +270,19 @@ def evaluate_risk(
         "distance_to_river_m": raw_features.get("distance_to_river_m"),
     }
     
+    # 1. & 2. Extract AWS Telemetry info
+    aws_info = meta.get("feature_metadata", {}).get("aws_telemetry", {})
+    if aws_info:
+        res_dict["telemetry_source"] = "HYBRID_CHIRPS_AWS" if aws_info.get("status") == "LIVE_AWS_INTERPOLATED" else "SATELLITE_CHIRPS"
+        res_dict["nearest_station"] = aws_info.get("nearest_station_id", "N/A")
+        res_dict["station_distance_km"] = aws_info.get("nearest_distance_km", 0.0)
+        res_dict["telemetry_status"] = aws_info.get("status", "FALLBACK_CHIRPS")
+    else:
+        res_dict["telemetry_source"] = "SATELLITE_CHIRPS"
+        res_dict["nearest_station"] = "N/A"
+        res_dict["station_distance_km"] = 0.0
+        res_dict["telemetry_status"] = "FALLBACK_CHIRPS"
+    
     # Save the risk result so it appears on the dashboard batch list
     risk_service.store.save_risk_result(res_dict)
 

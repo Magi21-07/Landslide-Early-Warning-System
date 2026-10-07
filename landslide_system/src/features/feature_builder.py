@@ -11,6 +11,7 @@ from src.etl.sentinel_service import get_remote_sensing_features
 from src.risk.rainfall_service import RainfallService
 from src.etl.gee_extractor import extract_vegetation
 from src.models.feature_contract import FEATURE_ORDER
+from src.services.aws_station_service import interpolate_aws_rainfall
 import ee
 
 logger = logging.getLogger(__name__)
@@ -63,20 +64,33 @@ class FeatureBuilder:
                 r3_val = max(r3, r1)
                 r7_val = max(r7, r3)
                 r15_val = max(r15, r7)
+                
+                # AWS Telemetry Blending
+                telemetry = {}
+                try:
+                    aws_res = interpolate_aws_rainfall(lat, lon)
+                    telemetry = aws_res
+                    if aws_res.get("status") == "LIVE_AWS_INTERPOLATED":
+                        r3_val = float(aws_res.get("rainfall_3day_mm", r3_val))
+                except Exception as e:
+                    logger.warning(f"AWS Interpolation failed: {e}")
+                    
                 api = r3_val + (0.5 * r7_val) + (0.25 * r15_val)
                 
                 return {
                     "rainfall_3day_mm": r3_val,
                     "rainfall_7day_mm": r7_val,
                     "rainfall_15day_mm": r15_val,
-                    "api_rainfall": api
+                    "api_rainfall": api,
+                    "telemetry_metadata": telemetry
                 }
             except Exception:
                 return {
                     "rainfall_3day_mm": 0.0,
                     "rainfall_7day_mm": 0.0,
                     "rainfall_15day_mm": 0.0,
-                    "api_rainfall": 0.0
+                    "api_rainfall": 0.0,
+                    "telemetry_metadata": {}
                 }
 
         def fetch_tree_cover():
@@ -113,6 +127,12 @@ class FeatureBuilder:
         metadata["rainfall_3day_mm"] = {"source": "CHIRPS", "status": "DYNAMIC"}
         metadata["rainfall_15day_mm"] = {"source": "CHIRPS", "status": "DYNAMIC"}
         metadata["api_rainfall"] = {"source": "CHIRPS", "status": "DYNAMIC"}
+        
+        telemetry = rain.get("telemetry_metadata", {})
+        if telemetry:
+            metadata["aws_telemetry"] = telemetry
+            if telemetry.get("status") == "LIVE_AWS_INTERPOLATED":
+                metadata["rainfall_3day_mm"]["source"] = "AWS_IMD_INTERPOLATED"
 
         # 5, 6, 7, 8, 9, 13
         if isinstance(spatial, dict):
@@ -161,3 +181,33 @@ class FeatureBuilder:
         ordered_features["api_rainfall"] = features.get("api_rainfall", 0.0)
         
         return ordered_features, {"feature_metadata": metadata}
+
+if __name__ == "__main__":
+    target_lat = 31.1070
+    target_lon = 77.2100
+    print(f"--- Running Dual-Horizon FeatureBuilder Verification for ({target_lat}, {target_lon}) ---")
+    
+    from src.api.dependencies import get_rainfall_service
+    rs = get_rainfall_service()
+    builder = FeatureBuilder(rs)
+    
+    features, metadata = builder.get_features(target_lat, target_lon)
+    
+    import json
+    print("\n--- 1. Blended 15-Factor Feature Vector ---")
+    print(json.dumps(features, indent=4))
+    
+    print("\n--- 2. Rainfall Value Comparison ---")
+    print(f"R_3d (AWS):   {features.get('rainfall_3day_mm'):.2f} mm")
+    print(f"R_15d (CHIRPS): {features.get('rainfall_15day_mm'):.2f} mm")
+    print(f"Calculated API: {features.get('api_rainfall'):.2f}")
+    
+    print("\n--- 3. Telemetry Metadata Output ---")
+    telemetry = metadata.get("feature_metadata", {}).get("aws_telemetry", {})
+    print(json.dumps({
+        "nearest_station_id": telemetry.get("nearest_station_id"),
+        "status": telemetry.get("status"),
+        "nearest_distance_km": telemetry.get("nearest_distance_km"),
+        "active_stations_count": telemetry.get("active_stations_count")
+    }, indent=4))
+

@@ -39,6 +39,12 @@ class RiskResponse(BaseModel):
     sar_moisture_proxy: Optional[float] = None  # SAR VV dB proxy — NOT volumetric soil moisture
     distance_to_river_m: Optional[float] = None
 
+    # Telemetry provenance
+    telemetry_source: Optional[str] = None
+    nearest_station: Optional[str] = None
+    station_distance_km: Optional[float] = None
+    telemetry_status: Optional[str] = None
+
     # In some models (like SQLite history), final_risk_level is mapped as dynamic_risk
     # We will alias if needed or provide both.
     dynamic_risk: Optional[str] = Field(None, validation_alias="final_risk_level")
