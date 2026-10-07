@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Loader2, AlertCircle, SlidersHorizontal, Layers, Maximize, RefreshCcw } from 'lucide-react';
+import { Loader2, AlertCircle, SlidersHorizontal, Maximize, RefreshCcw } from 'lucide-react';
 import { RISK_LEVELS } from '../utils/riskStyles';
 
 interface RiskMapProps {
@@ -33,10 +33,107 @@ export const RiskMap = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const [opacity, setOpacity] = useState(0.6);
+
   const [layersVisible, setLayersVisible] = useState({
     polygons: true,
     points: true,
   });
+
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    const map = mapInstance.current;
+
+    // Clear existing markers to prevent duplicates
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    const dataToRender = mapData?.features ? [...mapData.features] : [];
+
+    // Ensure a searched/selected target is in the array so it gets a marker
+    if (selectedLocationId && selectedLocationId.startsWith('coord-') && customView) {
+       const exists = dataToRender.some((f: any) => f.properties?.location_id === selectedLocationId);
+       if (!exists) {
+           dataToRender.push({
+               type: 'Feature',
+               geometry: { type: 'Point', coordinates: customView.center },
+               properties: {
+                   location_id: selectedLocationId,
+                   name: 'Searched Location',
+                   risk_level: 'UNKNOWN'
+               }
+           });
+       }
+    }
+
+    if (layersVisible.points && Array.isArray(dataToRender)) {
+      dataToRender.forEach((feature: any) => {
+        const target = feature.properties || {};
+        const geom = feature.geometry || {};
+        
+        let lon, lat;
+        if (geom.type === 'Point') {
+           lon = geom.coordinates[0];
+           lat = geom.coordinates[1];
+        } else {
+           lat = Number(target.lat ?? target.latitude);
+           lon = Number(target.lon ?? target.lng ?? target.longitude);
+        }
+
+        if (isNaN(lat) || isNaN(lon) || lat === undefined || lon === undefined) return;
+
+        const riskStr = String(
+          target.risk_level || target.severity || target.class || target.status || 'low'
+        ).toLowerCase();
+
+        let color = '#38A169'; // Low / Safe Green
+        let baseSize = 14;
+
+        if (riskStr.includes('mod') || riskStr.includes('watch') || riskStr.includes('amber')) {
+          color = '#E6A23C'; // Amber
+          baseSize = 18;
+        } else if (riskStr.includes('high') || riskStr.includes('crit') || riskStr.includes('red')) {
+          color = '#D94B4B'; // Red
+          baseSize = 22;
+        }
+
+        // Check if this specific marker is the currently selected search target
+        const isSelected = selectedLocationId && (
+            target.id === selectedLocationId || 
+            target.location_id === selectedLocationId
+        );
+
+        // Create a custom DOM element for the marker
+        const el = document.createElement('div');
+        const finalSize = isSelected ? baseSize + 8 : baseSize; // Enlarge selected marker
+        
+        el.style.width = `${finalSize}px`;
+        el.style.height = `${finalSize}px`;
+        el.style.backgroundColor = color;
+        el.style.border = isSelected ? '3px solid #FFFFFF' : '2px solid #3B82A0';
+        el.style.borderRadius = '50%';
+        el.style.cursor = 'pointer';
+        el.style.boxShadow = isSelected ? `0 0 15px ${color}, 0 0 8px #FFF` : `0 0 10px ${color}`;
+        el.style.transition = 'all 0.3s ease';
+        el.style.zIndex = isSelected ? '999' : '1'; // Force selected marker above all others
+
+        // Attach click event for selection
+        el.addEventListener('click', () => {
+          if (onFeatureSelect) onFeatureSelect(target);
+        });
+
+        // Add to MapLibre
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([lon, lat]) // MapLibre uses [lng, lat]
+          .addTo(map);
+
+        markersRef.current.push(marker);
+      });
+    }
+  }, [mapData, layersVisible.points, onFeatureSelect, selectedLocationId, customView]);
+
+  console.log("Map Component Rendering. mapData received:", mapData);
 
   useEffect(() => {
     if (mapInstance.current || !mapContainer.current) return;
@@ -83,13 +180,49 @@ export const RiskMap = ({
 
       map.on('load', () => {
         try {
+          
           // Force resize so MapLibre measures the container correctly after mount
           map.resize();
+
+          // Enhance Text Labels & Basemap Features for Sunlight Visibility
+          const layers = map.getStyle().layers;
+          if (layers) {
+            layers.forEach((layer) => {
+              // 1. Make text labels pop with a dark, semi-transparent glow
+              if (layer.type === 'symbol' && layer.layout?.['text-field']) {
+                map.setPaintProperty(layer.id, 'text-color', '#E2E8F0'); // Bright slate
+                map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(15, 23, 42, 0.9)'); // Dark navy halo
+                map.setPaintProperty(layer.id, 'text-halo-width', 1.5);
+                map.setPaintProperty(layer.id, 'text-halo-blur', 1);
+              }
+              
+              // 2. Lighten any existing water layers to a visible tactical cyan-blue
+              if (layer.id.includes('water') || (layer.type === 'fill' && layer.id.includes('ocean'))) {
+                map.setPaintProperty(layer.id, 'fill-color', '#1E293B');
+              }
+
+              // 3. Ensure roads are slightly visible (not pitch black)
+              if (layer.type === 'line' && layer.id.includes('road')) {
+                map.setPaintProperty(layer.id, 'line-color', '#334155');
+                map.setPaintProperty(layer.id, 'line-opacity', 0.6);
+              }
+            });
+          }
+
+
+          
 
           map.addSource('risk-targets', {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] }  // always start empty; data is set reactively
           });
+
+          
+          if (map.getLayer('admin-0-boundary')) {
+            map.setPaintProperty('admin-0-boundary', 'line-color', '#38BDF8');
+            map.setPaintProperty('admin-0-boundary', 'line-width', 1.5);
+            map.setPaintProperty('admin-0-boundary', 'line-opacity', 0.85);
+          }
 
           map.addLayer({
             id: 'risk-target-polygons',
@@ -99,10 +232,10 @@ export const RiskMap = ({
               'fill-color': [
                 'match',
                 ['get', 'risk_level'],
-                'LOW', '#10B981',
-                'MODERATE', '#F59E0B',
-                'HIGH', '#EF4444',
-                'CRITICAL', '#7F1D1D',
+                'LOW', '#38A169',
+                'MODERATE', '#E6A23C',
+                'HIGH', '#D94B4B',
+                'CRITICAL', '#D94B4B',
                 '#6B7280'
               ],
               'fill-opacity': 0.6
@@ -226,6 +359,16 @@ export const RiskMap = ({
     }
   }, [layersVisible]);
 
+  // Recalculate pixel dimensions when layout grid adjusts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mapInstance.current) {
+        mapInstance.current.resize();
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [mapData]);
+
   // Handle Opacity Updates
   useEffect(() => {
     if (mapInstance.current && mapInstance.current.isStyleLoaded()) {
@@ -330,6 +473,21 @@ export const RiskMap = ({
 
   return (
     <div className="relative w-full h-full" style={{ minHeight: 0 }}>
+      {/* Topographic Overlay */}
+      <div className="map-contour-overlay absolute inset-0 opacity-12 bg-[radial-gradient(#BFD5E2_1px,transparent_1px)] [background-size:16px_16px] overflow-hidden" />
+      
+      {/* Top-Left Overlay Pill */}
+      <div className="absolute top-4 left-4 z-20 bg-[#203447]/85 backdrop-blur-md rounded-lg px-3 py-1.5 border border-[#BFD5E2]/20 text-[10px] font-['Inter',sans-serif] font-bold text-[#F2F7FA] flex items-center gap-2 shadow-lg">
+        <span className="w-2 h-2 rounded-full bg-[#38A169] animate-pulse shadow-[0_0_8px_rgba(56,161,105,0.8)]"></span>
+        LIVE MONITORING
+      </div>
+
+      {/* Bottom Overlay Strip */}
+      <div className="absolute bottom-0 left-0 w-full bg-[#172331]/90 backdrop-blur-md border-t border-[#BFD5E2]/20 py-1.5 px-4 flex items-center justify-center z-20 text-[10px] font-['IBM_Plex_Mono',monospace] text-[#BFD5E2] font-bold uppercase tracking-widest gap-2">
+        <span className="w-2 h-2 rounded-full bg-[#3B82A0] animate-pulse"></span>
+        DATA STREAM ACTIVE | 24 SENSORS ONLINE | MONITORED ZONES: 20 | UTC {new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' })}
+      </div>
+
       {/* Explicit w/h on the container div — MapLibre REQUIRES non-zero pixel dimensions at render time */}
       <div
         ref={mapContainer}
@@ -337,7 +495,10 @@ export const RiskMap = ({
       />
       
       {/* Top Map Controls */}
-      <div className="absolute top-4 left-4 flex gap-2 z-10">
+      
+      <div className="absolute top-14 left-4 flex flex-col gap-2 z-10">
+        <div className="bg-[#203447] border border-[#BFD5E2]/20 rounded-xl p-2 flex flex-col gap-2 backdrop-blur shadow-lg">
+          <div className="flex gap-2">
          <button onClick={resetView} className="bg-zinc-900/90 backdrop-blur text-zinc-300 hover:text-white p-2 border border-zinc-700 text-xs font-mono font-semibold flex items-center gap-1.5" title="Reset Map View">
             <RefreshCcw className="w-3.5 h-3.5"/> RESET
          </button>
@@ -346,22 +507,24 @@ export const RiskMap = ({
          </button>
          
          {/* Layers Toggle */}
-         <div className="bg-zinc-900/90 backdrop-blur text-zinc-300 p-2 border border-zinc-700 text-xs font-mono font-semibold flex items-center gap-3">
-            <Layers className="w-3.5 h-3.5"/>
-            <label className="flex items-center gap-1 cursor-pointer">
+         </div><div className="flex flex-col gap-1.5 text-xs font-['Inter',sans-serif] text-[#F2F7FA] mt-2 pt-2 border-t border-[#BFD5E2]/15">
+         <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={true} readOnly />
+            Terrain Contour
+         </label>
+         
+            <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={layersVisible.polygons} onChange={e => setLayersVisible(s => ({...s, polygons: e.target.checked}))} />
-              POLY
+              Risk Zones
             </label>
-            <label className="flex items-center gap-1 cursor-pointer">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={layersVisible.points} onChange={e => setLayersVisible(s => ({...s, points: e.target.checked}))} />
-              PTS
-            </label>
-         </div>
-      </div>
+              Sensors
+            </label></div></div></div>
 
       {/* Legend & Controls */}
       <div className="absolute bottom-6 left-4 flex flex-col gap-2 z-10">
-        <div className="bg-zinc-900/90 backdrop-blur-sm p-3 border border-zinc-700 text-xs font-mono w-44">
+        <div className="map-legend-box p-3 text-xs font-mono w-44">
           <div className="flex items-center justify-between mb-2 text-zinc-400 font-bold uppercase tracking-widest text-[9px]">
             <span className="flex items-center gap-1.5"><SlidersHorizontal className="w-3 h-3"/> OPACITY</span>
             <span>{Math.round(opacity * 100)}%</span>
@@ -375,7 +538,7 @@ export const RiskMap = ({
           />
         </div>
 
-        <div className="bg-zinc-900/90 backdrop-blur-sm p-3 border border-zinc-700 text-xs font-mono w-44">
+        <div className="map-legend-box p-3 text-xs font-mono w-44">
           <h4 className="font-bold mb-2 text-zinc-400 uppercase tracking-widest text-[9px]">RISK LEVEL</h4>
           <div className="flex flex-col gap-1.5">
             {Object.values(RISK_LEVELS).filter(r => r.id !== 'UNKNOWN').map((risk) => (

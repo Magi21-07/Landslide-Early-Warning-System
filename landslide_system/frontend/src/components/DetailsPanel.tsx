@@ -10,7 +10,7 @@ interface DetailsPanelProps {
 export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
   if (!location) {
     return (
-      <section className="w-80 shrink-0 flex flex-col bg-[#314A5E] border-r border-[#526D82] h-full overflow-y-auto relative z-10 font-['IBM_Plex_Mono',monospace]">
+      <section className="w-1/5 shrink-0 flex flex-col bg-[#203447] border-r border-[#BFD5E2]/15 h-full overflow-y-auto relative z-10 font-['Inter',sans-serif]">
         <div className="flex-1 flex flex-col items-center justify-center text-[#526D82] text-[10px] uppercase tracking-widest p-6 text-center">
           <Info className="w-8 h-8 mb-3 opacity-20" />
           <p>AWAITING TARGET SELECTION...</p>
@@ -29,17 +29,39 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
       
   const isStale = location.is_stale === true || location.data_age_hours > 24;
 
+  const isAvailable = (val: any) => 
+    val != null && 
+    val !== '' && 
+    !['UNAVAILABLE', 'NOT_AVAILABLE', 'NOT AVAILABLE', 'N/A', 'NONE'].includes(String(val).toUpperCase().trim());
+
+  const hasSatelliteData = Boolean(
+    location && (
+      (location.satellite && Object.keys(location.satellite).length > 0) ||
+      isAvailable(location.ndvi) ||
+      isAvailable(location.sar_moisture_proxy) ||
+      isAvailable(location.distance_to_river_m)
+    )
+  );
+
+  const hasAlertData = Boolean(
+    location && (
+      isAvailable(location.alert_summary?.current_risk_level) ||
+      isAvailable(location.alert_summary?.trigger_reason) ||
+      (location.delivery_status && location.delivery_status.status !== 'NOT_SENT')
+    )
+  );
+
   return (
-    <section className="w-80 shrink-0 flex flex-col bg-[#314A5E] border-r border-[#526D82] h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-950 relative z-10">
+    <section className="w-1/5 shrink-0 flex flex-col bg-[#203447] border-r border-[#BFD5E2]/15 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-950 relative z-10">
       <div className="flex-col flex">
         
         {/* 1. Location Info */}
-        <div className="p-3 border-b border-[#526D82] bg-[#314A5E] sticky top-0 z-20">
-          <h2 className="text-[11px] font-['IBM_Plex_Mono',monospace] font-bold text-zinc-200 break-words flex items-start gap-1.5 uppercase">
+        <div className="p-3 border-b border-[#BFD5E2]/15 bg-[#203447] sticky top-0 z-20">
+          <h2 className="text-[11px] font-['Inter',sans-serif] font-bold text-[#F2F7FA] break-words flex items-start gap-1.5 uppercase">
             <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
             {location.name || location.location_id || 'UNKNOWN_TGT'}
           </h2>
-          <div className="flex items-center gap-3 mt-1.5 ml-5 text-[9px] text-[#BFD5E2] font-['IBM_Plex_Mono',monospace] uppercase tracking-widest">
+          <div className="flex items-center gap-3 mt-1.5 ml-5 text-[9px] text-[#BFD5E2] font-['Inter',sans-serif] uppercase tracking-widest">
             <span>LAT:{location.latitude !== undefined ? Number(location.latitude).toFixed(4) : '--'}</span>
             <span>LON:{location.longitude !== undefined ? Number(location.longitude).toFixed(4) : '--'}</span>
             {loading && <span className="text-blue-500 animate-pulse">FETCHING LIVE DATA...</span>}
@@ -47,18 +69,18 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
         </div>
 
         {/* 5. Dynamic Risk (Promoted for visibility) */}
-        <div className="p-3 border-b border-[#526D82] bg-[#314A5E]/50">
-          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
+        <div className="p-3 border-b border-[#BFD5E2]/15 bg-[#203447]/50">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
             <ShieldAlert className="w-3 h-3" />
             EVAL: DYNAMIC RISK
           </div>
-          <div className="p-2.5 border border-[#526D82] bg-[#172331] flex items-center justify-between rounded-xl">
+          <div className="p-2.5 border border-[#BFD5E2]/15 bg-[#263E52] flex items-center justify-between rounded-xl">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-xl" style={{ backgroundColor: riskStyle.markerColor, boxShadow: `0 0 5px ${riskStyle.markerColor}` }}></span>
-              <span className="font-['IBM_Plex_Mono',monospace] font-bold text-[11px] tracking-widest uppercase" style={{ color: riskStyle.markerColor }}>{riskStyle.id}</span>
+              <span className="font-['Inter',sans-serif] font-bold text-[11px] tracking-widest uppercase" style={{ color: riskStyle.markerColor }}>{riskStyle.id}</span>
             </div>
             {location.risk_score !== undefined && (
-              <span className="text-[10px] font-['IBM_Plex_Mono',monospace] font-bold text-[#526D82]">
+              <span className="text-[10px] font-['Inter',sans-serif] font-bold text-[#526D82]">
                 SC:{Number(location.risk_score).toFixed(2)}
               </span>
             )}
@@ -66,91 +88,93 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
         </div>
 
         {isStale && (
-          <div className="px-3 py-1.5 bg-red-950 border-b border-red-900 text-[#D94B4B] flex items-center gap-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold tracking-widest uppercase">
+          <div className="px-3 py-1.5 bg-red-950 border-b border-red-900 text-[#D94B4B] flex items-center gap-2 text-[9px] font-['Inter',sans-serif] font-bold tracking-widest uppercase">
             <AlertTriangle className="w-3 h-3" />
             WARNING: STALE DATA DETECTED
           </div>
         )}
 
         {/* 5b. Telegram Alert & Delivery Status */}
-        <div className="p-3 border-b border-[#526D82]">
-          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
-            <ShieldAlert className="w-3 h-3" />
-            SYS: ALERT & DELIVERY STATUS
-          </div>
-          <div className="bg-[#172331] p-2 border border-[#526D82] flex flex-col gap-2 text-[10px] font-['IBM_Plex_Mono',monospace]">
-            {(() => {
-              const summary = location.alert_summary;
-              const delivery = location.delivery_status;
-              
-              const alertStatusLabel = summary?.current_risk_level ? `${summary.current_risk_level} ${summary.current_risk_level === 'CRITICAL' ? 'EMERGENCY' : 'WARNING'}` : 'Not Available';
-              const triggerReason = summary?.trigger_reason || 'Not Available';
-              const triggeredAt = summary?.triggered_at ? `${new Date(summary.triggered_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC` : '--';
-              
-              const delStatus = delivery?.status || 'NOT_SENT';
-              const lastAttempt = delivery?.last_attempt_at ? `${new Date(delivery.last_attempt_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC` : '--';
-              const errorMsg = delivery?.error_message || '';
-              
-              let badgeClasses = 'bg-slate-800 text-[#BFD5E2] border-slate-700';
-              if (delStatus === 'SENT') badgeClasses = 'bg-emerald-950 text-[#38A169] border-emerald-800';
-              else if (delStatus === 'PENDING' || delStatus === 'RETRYING') badgeClasses = 'bg-amber-950 text-[#E6A23C] border-amber-800';
-              else if (delStatus === 'FAILED') badgeClasses = 'bg-red-950 text-[#D94B4B] border-red-800';
+        {hasAlertData && (
+          <div className="p-3 border-b border-[#BFD5E2]/15">
+            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
+              <ShieldAlert className="w-3 h-3" />
+              SYS: ALERT & DELIVERY STATUS
+            </div>
+            <div className="bg-[#263E52] p-2 border border-[#BFD5E2]/15 flex flex-col gap-2 text-[10px] font-['Inter',sans-serif]">
+              {(() => {
+                const summary = location.alert_summary;
+                const delivery = location.delivery_status;
+                
+                const alertStatusLabel = summary?.current_risk_level ? `${summary.current_risk_level} ${summary.current_risk_level === 'CRITICAL' ? 'EMERGENCY' : 'WARNING'}` : 'Not Available';
+                const triggerReason = summary?.trigger_reason || 'Not Available';
+                const triggeredAt = summary?.triggered_at ? `${new Date(summary.triggered_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC` : '--';
+                
+                const delStatus = delivery?.status || 'NOT_SENT';
+                const lastAttempt = delivery?.last_attempt_at ? `${new Date(delivery.last_attempt_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false })} UTC` : '--';
+                const errorMsg = delivery?.error_message || '';
+                
+                let badgeClasses = 'bg-slate-800 text-[#BFD5E2] border-slate-700';
+                if (delStatus === 'SENT') badgeClasses = 'bg-emerald-950 text-[#38A169] border-emerald-800';
+                else if (delStatus === 'PENDING' || delStatus === 'RETRYING') badgeClasses = 'bg-amber-950 text-[#E6A23C] border-amber-800';
+                else if (delStatus === 'FAILED') badgeClasses = 'bg-red-950 text-[#D94B4B] border-red-800';
 
-              return (
-                <>
-                  <div className="flex justify-between border-b border-[#526D82] pb-1.5">
-                    <span className="text-[#526D82]">SEVERITY</span>
-                    <span className="text-[#F2F7FA] font-bold">{alertStatusLabel}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-[#526D82] pb-1.5">
-                    <span className="text-[#526D82]">REASON</span>
-                    <span className="text-[#F2F7FA] text-right max-w-[180px] truncate" title={triggerReason}>{triggerReason}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-[#526D82] pb-1.5">
-                    <span className="text-[#526D82]">TRIGGERED AT</span>
-                    <span className="text-[#F2F7FA]">{triggeredAt}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-[#526D82] pb-1.5 items-center">
-                    <span className="text-[#526D82]">TELEGRAM</span>
-                    <span className={`px-1.5 py-0.5 border ${badgeClasses} font-bold uppercase`}>
-                      {delStatus}
-                    </span>
-                  </div>
-                  <div className="flex justify-between pt-0.5 items-center">
-                    <span className="text-[#526D82]">LAST ATTEMPT</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[#F2F7FA]">{lastAttempt}</span>
-                      {delStatus === 'FAILED' && errorMsg && (
-                        <div className="group relative flex items-center">
-                          <Info className="w-3 h-3 text-[#D94B4B] cursor-help" />
-                          <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block w-48 p-1.5 bg-[#314A5E] border border-[#526D82] text-[#F2F7FA] text-[9px] z-50 rounded-xl shadow-lg break-words">
-                            {errorMsg}
-                          </div>
-                        </div>
-                      )}
+                return (
+                  <>
+                    <div className="flex justify-between border-b border-[#BFD5E2]/15 pb-1.5">
+                      <span className="text-[#526D82]">SEVERITY</span>
+                      <span className="text-[#F2F7FA] font-bold">{alertStatusLabel}</span>
                     </div>
-                  </div>
-                </>
-              );
-            })()}
+                    <div className="flex justify-between border-b border-[#BFD5E2]/15 pb-1.5">
+                      <span className="text-[#526D82]">REASON</span>
+                      <span className="text-[#F2F7FA] text-right max-w-[180px] truncate" title={triggerReason}>{triggerReason}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-[#BFD5E2]/15 pb-1.5">
+                      <span className="text-[#526D82]">TRIGGERED AT</span>
+                      <span className="text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">{triggeredAt}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-[#BFD5E2]/15 pb-1.5 items-center">
+                      <span className="text-[#526D82]">TELEGRAM</span>
+                      <span className={`px-1.5 py-0.5 border ${badgeClasses} font-bold uppercase`}>
+                        {delStatus}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-0.5 items-center">
+                      <span className="text-[#526D82]">LAST ATTEMPT</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">{lastAttempt}</span>
+                        {delStatus === 'FAILED' && errorMsg && (
+                          <div className="group relative flex items-center">
+                            <Info className="w-3 h-3 text-[#D94B4B] cursor-help" />
+                            <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block w-48 p-1.5 bg-[#203447] border border-[#BFD5E2]/15 text-[#F2F7FA] text-[9px] z-50 rounded-xl shadow-lg break-words">
+                              {errorMsg}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           </div>
-        </div>
+        )}
         
         {/* 2. Static Susceptibility */}
-        <div className="p-3 border-b border-[#526D82]">
-          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
+        <div className="p-3 border-b border-[#BFD5E2]/15">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
             <ActivitySquare className="w-3 h-3" />
             EVAL: STATIC SUSCEPTIBILITY
           </div>
-          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-['IBM_Plex_Mono',monospace]">
-            <div className="bg-[#172331] p-2 border border-[#526D82] flex flex-col gap-0.5">
+          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-['Inter',sans-serif]">
+            <div className="bg-[#263E52] p-2 border border-[#BFD5E2]/15 flex flex-col gap-0.5">
               <span className="text-[#526D82] uppercase tracking-widest text-[8px]">Probability</span>
-              <span className="font-medium text-[#F2F7FA]">
+              <span className="font-medium text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">
                 {location.probability !== undefined ? Number(location.probability).toFixed(3) : 
                  (location.susceptibility_probability !== undefined ? Number(location.susceptibility_probability).toFixed(3) : 'N/A')}
               </span>
             </div>
-            <div className="bg-[#172331] p-2 border border-[#526D82] flex flex-col gap-0.5">
+            <div className="bg-[#263E52] p-2 border border-[#BFD5E2]/15 flex flex-col gap-0.5">
               <span className="text-[#526D82] uppercase tracking-widest text-[8px]">Class</span>
               <span className="font-medium text-[#F2F7FA] uppercase">
                 {location.susceptibility_class || 'UNKNOWN'}
@@ -160,27 +184,27 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
         </div>
 
         {/* 3 & 4. Recent Rainfall & Chart */}
-        <div className="p-3 border-b border-[#526D82]">
-          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
+        <div className="p-3 border-b border-[#BFD5E2]/15">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
             <CloudRain className="w-3 h-3" />
             DATA: RAINFALL (15-DAY)
           </div>
-          <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-['IBM_Plex_Mono',monospace] mb-3">
-            <div className="bg-[#172331] border border-[#526D82] p-1.5 flex flex-col gap-0.5">
+          <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-['Inter',sans-serif] mb-3">
+            <div className="bg-[#263E52] border border-[#BFD5E2]/15 p-1.5 flex flex-col gap-0.5">
               <span className="text-[8px] text-[#526D82] uppercase tracking-widest">1D</span>
-              <span className="text-[#F2F7FA]">{location.rainfall_1d !== undefined ? `${location.rainfall_1d}` : '-'}</span>
+              <span className="text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">{location.rainfall_1d !== undefined ? `${location.rainfall_1d}` : '-'}</span>
             </div>
-            <div className="bg-[#172331] border border-[#526D82] p-1.5 flex flex-col gap-0.5">
+            <div className="bg-[#263E52] border border-[#BFD5E2]/15 p-1.5 flex flex-col gap-0.5">
               <span className="text-[8px] text-[#526D82] uppercase tracking-widest">3D</span>
-              <span className="text-[#F2F7FA]">{location.rainfall_3d !== undefined ? `${location.rainfall_3d}` : '-'}</span>
+              <span className="text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">{location.rainfall_3d !== undefined ? `${location.rainfall_3d}` : '-'}</span>
             </div>
-            <div className="bg-[#172331] border border-[#526D82] p-1.5 flex flex-col gap-0.5">
+            <div className="bg-[#263E52] border border-[#BFD5E2]/15 p-1.5 flex flex-col gap-0.5">
               <span className="text-[8px] text-[#526D82] uppercase tracking-widest">7D</span>
-              <span className="text-[#F2F7FA]">{location.rainfall_7d !== undefined ? `${location.rainfall_7d}` : '-'}</span>
+              <span className="text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">{location.rainfall_7d !== undefined ? `${location.rainfall_7d}` : '-'}</span>
             </div>
-            <div className="bg-[#172331] border border-[#526D82] p-1.5 flex flex-col gap-0.5">
+            <div className="bg-[#263E52] border border-[#BFD5E2]/15 p-1.5 flex flex-col gap-0.5">
               <span className="text-[8px] text-[#526D82] uppercase tracking-widest">15D</span>
-              <span className="text-[#F2F7FA]">{location.rainfall_15d !== undefined ? `${location.rainfall_15d}` : '-'}</span>
+              <span className="text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">{location.rainfall_15d !== undefined ? `${location.rainfall_15d}` : '-'}</span>
             </div>
           </div>
 
@@ -194,19 +218,19 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
         </div>
 
         {/* 6. Data Status */}
-        <div className="p-3 border-b border-[#526D82]">
-          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
+        <div className="p-3 border-b border-[#BFD5E2]/15">
+          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
             <Database className="w-3 h-3" />
             SYS: DATA INTEGRITY
           </div>
-          <div className="flex flex-col gap-1 text-[10px] font-['IBM_Plex_Mono',monospace] text-[#526D82] bg-[#172331] p-2 border border-[#526D82]">
-            <div className="flex justify-between border-b border-[#526D82] pb-1">
+          <div className="flex flex-col gap-1 text-[10px] font-['Inter',sans-serif] text-[#526D82] bg-[#263E52] p-2 border border-[#BFD5E2]/15">
+            <div className="flex justify-between border-b border-[#BFD5E2]/15 pb-1">
               <span className="text-[#526D82]">SOURCE</span>
               <span className="uppercase text-[#F2F7FA]">{location.source || 'CHIRPS'}</span>
             </div>
-            <div className="flex justify-between border-b border-[#526D82] py-1">
+            <div className="flex justify-between border-b border-[#BFD5E2]/15 py-1">
               <span className="text-[#526D82]">OBS DATE</span>
-              <span className="text-[#F2F7FA]">{location.observation_date || '--'}</span>
+              <span className="text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">{location.observation_date || '--'}</span>
             </div>
             <div className="flex justify-between pt-1">
               <span className="text-[#526D82]">STATE</span>
@@ -223,8 +247,8 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
 
         {/* 7. Risk Factor Breakdown (SHAP) */}
         {location.top_risk_factors && location.top_risk_factors.length > 0 && (
-          <div className="p-3 border-b border-[#526D82]">
-            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
+          <div className="p-3 border-b border-[#BFD5E2]/15">
+            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
               <BarChart3 className="w-3 h-3" />
               EVAL: TOP RISK FACTORS (SHAP)
             </div>
@@ -234,11 +258,11 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
                 const val = parseFloat(rf.contribution.replace(/[+%\\-]/g, ''));
                 return (
                   <div key={idx} className="flex flex-col gap-1">
-                    <div className="flex justify-between items-end text-[9px] font-['IBM_Plex_Mono',monospace] uppercase tracking-widest">
+                    <div className="flex justify-between items-end text-[9px] font-['Inter',sans-serif] uppercase tracking-widest">
                       <span className="text-[#F2F7FA] truncate pr-2">{rf.factor}</span>
                       <span className={isPositive ? "text-[#D94B4B] font-bold" : "text-[#38A169] font-bold"}>{rf.contribution}</span>
                     </div>
-                    <div className="h-1 bg-[#314A5E] w-full overflow-hidden">
+                    <div className="h-1 bg-[#203447] w-full overflow-hidden">
                       <div 
                         className={`h-full ${isPositive ? "bg-[#D94B4B]" : "bg-[#38A169]"}`} 
                         style={{ width: `${Math.min(val, 100)}%` }}
@@ -252,43 +276,45 @@ export const DetailsPanel = ({ location, loading }: DetailsPanelProps) => {
         )}
 
         {/* 8. Dynamic Mini-Metrics */}
-        <div className="p-3 border-b border-[#526D82]">
-          <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
-            <Activity className="w-3 h-3" />
-            EVAL: SATELLITE & SPATIAL METRICS
+        {hasSatelliteData && (
+          <div className="p-3 border-b border-[#BFD5E2]/15">
+            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
+              <Activity className="w-3 h-3" />
+              EVAL: SATELLITE & SPATIAL METRICS
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 text-[10px] font-['Inter',sans-serif]">
+              <div className="bg-[#263E52] p-2 border border-[#BFD5E2]/15 flex flex-col gap-0.5">
+                <span className="text-[#526D82] uppercase tracking-widest text-[8px]">NDVI</span>
+                <span className="font-medium text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">
+                  {location.ndvi !== undefined && location.ndvi !== null ? Number(location.ndvi).toFixed(3) : 'UNAVAILABLE'}
+                </span>
+              </div>
+              <div className="bg-[#263E52] p-2 border border-[#BFD5E2]/15 flex flex-col gap-0.5">
+                <span className="text-[#526D82] uppercase tracking-widest text-[8px]">SAR Moisture Proxy</span>
+                <span className="font-medium text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">
+                  {location.sar_moisture_proxy !== undefined && location.sar_moisture_proxy !== null ? `${Number(location.sar_moisture_proxy).toFixed(1)} dB` : 'UNAVAILABLE'}
+                </span>
+              </div>
+              <div className="bg-[#263E52] p-2 border border-[#BFD5E2]/15 flex flex-col gap-0.5 col-span-2">
+                <span className="text-[#526D82] uppercase tracking-widest text-[8px]">Distance to River</span>
+                <span className="font-medium text-[#F2F7FA] font-['IBM_Plex_Mono',monospace]">
+                  {location.distance_to_river_m !== undefined && location.distance_to_river_m !== null ? `${Number(location.distance_to_river_m).toFixed(1)} m` : 'UNAVAILABLE'}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-['IBM_Plex_Mono',monospace]">
-            <div className="bg-[#172331] p-2 border border-[#526D82] flex flex-col gap-0.5">
-              <span className="text-[#526D82] uppercase tracking-widest text-[8px]">NDVI</span>
-              <span className="font-medium text-[#F2F7FA]">
-                {location.ndvi !== undefined && location.ndvi !== null ? Number(location.ndvi).toFixed(3) : 'UNAVAILABLE'}
-              </span>
-            </div>
-            <div className="bg-[#172331] p-2 border border-[#526D82] flex flex-col gap-0.5">
-              <span className="text-[#526D82] uppercase tracking-widest text-[8px]">SAR Moisture Proxy</span>
-              <span className="font-medium text-[#F2F7FA]">
-                {location.sar_moisture_proxy !== undefined && location.sar_moisture_proxy !== null ? `${Number(location.sar_moisture_proxy).toFixed(1)} dB` : 'UNAVAILABLE'}
-              </span>
-            </div>
-            <div className="bg-[#172331] p-2 border border-[#526D82] flex flex-col gap-0.5 col-span-2">
-              <span className="text-[#526D82] uppercase tracking-widest text-[8px]">Distance to River</span>
-              <span className="font-medium text-[#F2F7FA]">
-                {location.distance_to_river_m !== undefined && location.distance_to_river_m !== null ? `${Number(location.distance_to_river_m).toFixed(1)} m` : 'UNAVAILABLE'}
-              </span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* 9. Risk Explanation */}
         {explanations.length > 0 && (
           <div className="p-3">
-            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['IBM_Plex_Mono',monospace] font-bold text-[#BFD5E2] uppercase tracking-widest">
+            <div className="flex items-center gap-1.5 mb-2 text-[9px] font-['Inter',sans-serif] font-bold text-[#BFD5E2] uppercase tracking-widest">
               <Info className="w-3 h-3 text-[#526D82]" />
               LOG: EVAL FACTORS
             </div>
             <ul className="flex flex-col gap-1.5">
               {explanations.map((exp, idx) => (
-                <li key={idx} className="text-[9px] font-['IBM_Plex_Mono',monospace] text-[#526D82] leading-tight bg-[#172331] p-2 border-l-2 border-[#526D82]">
+                <li key={idx} className="text-[9px] font-['Inter',sans-serif] text-[#526D82] leading-tight bg-[#263E52] p-2 border-l-2 border-[#BFD5E2]/15">
                   {exp}
                 </li>
               ))}

@@ -82,8 +82,11 @@ def main():
     # missing=np.nan is native to XGBoost.
     clf = xgb.XGBClassifier(
         n_estimators=200,
-        max_depth=6,
+        max_depth=4,
         learning_rate=0.05,
+        subsample=0.8,
+        scale_pos_weight=1.0,
+        objective='binary:logistic',
         random_state=42,
         missing=np.nan,
         n_jobs=1,
@@ -93,6 +96,14 @@ def main():
     clf.fit(X_train_transformed, y_train, eval_set=[(X_val_transformed, y_val)], verbose=False)
     
     print("Evaluating model...")
+    
+    val_pred_proba = clf.predict_proba(X_val_transformed)[:, 1]
+    print("\nValidation Set Predicted Probability Percentiles:")
+    print(f"10th percentile: {np.percentile(val_pred_proba, 10):.4f}")
+    print(f"50th percentile: {np.percentile(val_pred_proba, 50):.4f}")
+    print(f"75th percentile: {np.percentile(val_pred_proba, 75):.4f}")
+    print(f"95th percentile: {np.percentile(val_pred_proba, 95):.4f}\n")
+    
     y_pred_proba = clf.predict_proba(X_test_transformed)[:, 1]
     y_pred = clf.predict(X_test_transformed)
     

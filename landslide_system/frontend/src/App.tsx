@@ -35,7 +35,16 @@ function Dashboard() {
       .then((data) => {
         setMapData(data);
         if (data && data.features) {
-          setLocations(data.features.map((f: any) => f.properties));
+          const locs = data.features.map((f: any) => f.properties);
+          setLocations(locs);
+          
+          // Auto-select first target to avoid blank details panel
+          setLocations((currentLocs) => {
+             if (currentLocs.length > 0) {
+                 setSelectedLocationId((prev) => prev ? prev : (currentLocs[0].id || currentLocs[0].location_id));
+             }
+             return currentLocs;
+          });
         }
       })
       .catch((err) => {
@@ -106,10 +115,10 @@ function Dashboard() {
     : staticLocation;
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-[#172331] text-[#F2F7FA] font-['IBM_Plex_Mono',monospace] antialiased selection:bg-[#3B82A0] selection:text-[#0b0d10]">
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-[#172331] text-[#F2F7FA] font-['Inter',sans-serif] antialiased selection:bg-[#3B82A0] selection:text-[#0b0d10]">
       <Header status={sysStatus ? 'Operational' : sysError || 'Connecting...'} />
 
-      <div className="flex-1 flex overflow-hidden border-t border-[#526D82]">
+      <div className="flex-1 flex overflow-hidden border-t border-[#BFD5E2]/15">
         <Sidebar
           locations={locations}
           selectedLocationId={selectedLocationId}

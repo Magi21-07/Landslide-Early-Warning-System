@@ -23,7 +23,21 @@ router = APIRouter(prefix="/api/v1/risk", tags=["Landslide Risk"])
 # ----------------- Load ML Model & Artifacts ----------------- #
 import json
 import shap
+import time
+from prometheus_client import Counter, Histogram
 from src.features.feature_builder import FeatureBuilder
+
+# Custom Prometheus Metrics
+landslide_risk_evaluations_total = Counter(
+    'landslide_risk_evaluations_total',
+    'Total risk evaluations',
+    ['risk_tier']
+)
+
+landslide_inference_latency_seconds = Histogram(
+    'landslide_inference_latency_seconds',
+    'Execution time inside /api/v1/risk/evaluate'
+)
 
 model_dir = os.path.join(os.path.dirname(__file__), "..", "..", "models")
 with open(os.path.join(model_dir, "landslide_model.pkl"), "rb") as f:
@@ -119,6 +133,7 @@ def evaluate_risk(
     rainfall_service: RainfallService = Depends(get_rainfall_service)
 ):
     lat, lon = request.latitude, request.longitude
+    start_time = time.time()
 
     chirps_client = MockChirpsClient(rainfall_service)
 
@@ -128,8 +143,8 @@ def evaluate_risk(
     # 1. & 2. & 6. Extracted securely via FeatureBuilder
     raw_features, meta = feature_builder.get_features(lat, lon)
     
-    # Assert semantic feature count exactly 14
-    assert len(raw_features) == 14, f"ML input vector must be exactly 14 features, got {len(raw_features)}"
+    # Assert semantic feature count exactly 15
+    assert len(raw_features) == 15, f"ML input vector must be exactly 15 features, got {len(raw_features)}"
 
     # Convert to DataFrame for preprocessing
     import pandas as pd
@@ -249,7 +264,7 @@ def evaluate_risk(
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "observation_date": datetime.date.today().isoformat(),
         "stale": False,
-        "data_source": "MOCK/SYNTHETIC" if mock else "ML Pipeline v2.0 / 14-Factor",
+        "data_source": "MOCK/SYNTHETIC" if mock else "ML Pipeline v2.0 / 15-Factor",
         "ndvi": raw_features.get("ndvi_index"),
         "sar_moisture_proxy": raw_features.get("sar_soil_moisture"),
         "distance_to_river_m": raw_features.get("distance_to_river_m"),
@@ -276,6 +291,10 @@ def evaluate_risk(
             async_dispatcher = AsyncTelegramDispatcher(config, tracker)
             chat_id = config.chat_id or ""
             background_tasks.add_task(async_dispatcher.dispatch_in_background, event, chat_id)
+
+    # Record metrics
+    landslide_risk_evaluations_total.labels(risk_tier=risk_level).inc()
+    landslide_inference_latency_seconds.observe(time.time() - start_time)
 
     return res_dict
 

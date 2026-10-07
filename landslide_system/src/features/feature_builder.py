@@ -59,9 +59,25 @@ class FeatureBuilder:
                 r3 = sum(r.get("rainfall_mm", 0.0) for r in records[-3:])
                 r7 = sum(r.get("rainfall_mm", 0.0) for r in records[-7:])
                 r15 = sum(r.get("rainfall_mm", 0.0) for r in records)
-                return {"rainfall_3day_mm": max(r3, r1), "rainfall_15day_mm": max(r15, r7)}
+                
+                r3_val = max(r3, r1)
+                r7_val = max(r7, r3)
+                r15_val = max(r15, r7)
+                api = r3_val + (0.5 * r7_val) + (0.25 * r15_val)
+                
+                return {
+                    "rainfall_3day_mm": r3_val,
+                    "rainfall_7day_mm": r7_val,
+                    "rainfall_15day_mm": r15_val,
+                    "api_rainfall": api
+                }
             except Exception:
-                return {"rainfall_3day_mm": np.nan, "rainfall_15day_mm": np.nan}
+                return {
+                    "rainfall_3day_mm": 0.0,
+                    "rainfall_7day_mm": 0.0,
+                    "rainfall_15day_mm": 0.0,
+                    "api_rainfall": 0.0
+                }
 
         def fetch_tree_cover():
             return self._get_tree_cover(lat, lon)
@@ -85,50 +101,63 @@ class FeatureBuilder:
         metadata = {}
 
         # 1 & 2
-        features["slope_degrees"] = terrain.get("slope_degrees", np.nan)
-        features["elevation_m"] = terrain.get("elevation_m", np.nan)
+        features["slope_degrees"] = terrain.get("slope_degrees", 0.0) if terrain.get("slope_degrees") is not None else 0.0
+        features["elevation_m"] = terrain.get("elevation_m", 0.0) if terrain.get("elevation_m") is not None else 0.0
         metadata["slope_degrees"] = {"source": "terrain_service", "status": "STATIC"}
         metadata["elevation_m"] = {"source": "terrain_service", "status": "STATIC"}
 
-        # 3 & 4
-        features["rainfall_3day_mm"] = rain.get("rainfall_3day_mm", np.nan)
-        features["rainfall_15day_mm"] = rain.get("rainfall_15day_mm", np.nan)
+        # 3 & 4 (and API)
+        features["rainfall_3day_mm"] = rain.get("rainfall_3day_mm", 0.0)
+        features["rainfall_15day_mm"] = rain.get("rainfall_15day_mm", 0.0)
+        features["api_rainfall"] = rain.get("api_rainfall", 0.0)
         metadata["rainfall_3day_mm"] = {"source": "CHIRPS", "status": "DYNAMIC"}
         metadata["rainfall_15day_mm"] = {"source": "CHIRPS", "status": "DYNAMIC"}
+        metadata["api_rainfall"] = {"source": "CHIRPS", "status": "DYNAMIC"}
 
         # 5, 6, 7, 8, 9, 13
         if isinstance(spatial, dict):
-            features["distance_to_river_m"] = spatial.get("distance_to_river_m", np.nan)
-            features["distance_to_road_m"] = spatial.get("distance_to_road_m", np.nan)
-            features["soil_clay_content"] = spatial.get("clay_percent", np.nan)
-            features["soil_hydraulic_cond"] = spatial.get("hydraulic_capacity", np.nan)
-            features["lithology_class"] = spatial.get("lithology_class", np.nan)
-            features["weathering_index"] = spatial.get("weathering_index", np.nan)
+            features["distance_to_river_m"] = spatial.get("distance_to_river_m", 0.0)
+            features["distance_to_road_m"] = spatial.get("distance_to_road_m", 0.0)
+            features["soil_clay_content"] = spatial.get("clay_percent", 0.0)
+            features["soil_hydraulic_cond"] = spatial.get("hydraulic_capacity", 0.0)
+            features["lithology_class"] = spatial.get("lithology_class", 0.0)
+            features["weathering_index"] = spatial.get("weathering_index", 0.0)
         else:
-            features["distance_to_river_m"] = np.nan
-            features["distance_to_road_m"] = np.nan
-            features["soil_clay_content"] = np.nan
-            features["soil_hydraulic_cond"] = np.nan
-            features["lithology_class"] = np.nan
-            features["weathering_index"] = np.nan
+            features["distance_to_river_m"] = 0.0
+            features["distance_to_road_m"] = 0.0
+            features["soil_clay_content"] = 0.0
+            features["soil_hydraulic_cond"] = 0.0
+            features["lithology_class"] = 0.0
+            features["weathering_index"] = 0.0
 
         # 10, 12
-        features["ndvi_index"] = rs.sentinel2.ndvi if rs and rs.sentinel2.ndvi is not None else np.nan
-        features["sar_soil_moisture"] = rs.sentinel1.sar_soil_moisture_proxy if rs and rs.sentinel1.sar_soil_moisture_proxy is not None else np.nan
+        features["ndvi_index"] = rs.sentinel2.ndvi if (rs and rs.sentinel2.ndvi is not None) else 0.0
+        features["sar_soil_moisture"] = rs.sentinel1.sar_soil_moisture_proxy if (rs and rs.sentinel1.sar_soil_moisture_proxy is not None) else 0.0
         
         metadata["ndvi_index"] = {"source": rs.sentinel2.source if rs else None, "status": rs._provenance.get("sentinel2", {}).get("status") if rs else "UNAVAILABLE"}
         metadata["sar_soil_moisture"] = {"source": rs.sentinel1.source if rs else None, "status": rs._provenance.get("sentinel1", {}).get("status") if rs else "UNAVAILABLE"}
 
         # 11
-        features["tree_cover_density"] = tree_val if tree_val is not None else np.nan
+        features["tree_cover_density"] = tree_val if (tree_val is not None and not np.isnan(tree_val)) else 0.0
         metadata["tree_cover_density"] = tree_meta
 
         # 14
-        # Since we don't have explicit land_use_settlement extractor, we provide np.nan and handle in missing values.
-        features["land_use_settlement"] = np.nan
+        # Replaced hardcoded np.nan with a default 0.0 value
+        features["land_use_settlement"] = 0.0
         metadata["land_use_settlement"] = {"source": "NOT_IMPLEMENTED", "status": "UNAVAILABLE"}
 
-        # Ensure order and exactly 14 keys, replacing any None with np.nan
-        ordered_features = {k: np.nan if features.get(k, np.nan) is None else features.get(k, np.nan) for k in FEATURE_ORDER}
+        # Ensure order and replace any None or np.nan with 0.0
+        ordered_features = {}
+        for k in FEATURE_ORDER:
+            val = features.get(k)
+            if val is None:
+                ordered_features[k] = 0.0
+            elif isinstance(val, (int, float)) and np.isnan(val):
+                ordered_features[k] = 0.0
+            else:
+                ordered_features[k] = val
+        
+        # Add API rainfall if not already in FEATURE_ORDER
+        ordered_features["api_rainfall"] = features.get("api_rainfall", 0.0)
         
         return ordered_features, {"feature_metadata": metadata}

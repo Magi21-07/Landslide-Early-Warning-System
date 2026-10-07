@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 
@@ -17,6 +18,10 @@ app = FastAPI(
 # Add Middlewares
 app.add_middleware(StructuredLoggingMiddleware)
 app.add_middleware(CorrelationIDMiddleware)
+
+# Prometheus instrumentation
+instrumentator = Instrumentator().instrument(app)
+instrumentator.expose(app, endpoint="/metrics")
 
 # Configure CORS
 app.add_middleware(

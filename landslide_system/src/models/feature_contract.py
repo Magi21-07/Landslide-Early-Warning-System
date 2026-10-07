@@ -15,7 +15,8 @@ FEATURE_ORDER: List[str] = [
     "tree_cover_density",
     "sar_soil_moisture",
     "weathering_index",
-    "land_use_settlement"
+    "land_use_settlement",
+    "api_rainfall"
 ]
 
 FEATURE_CONTRACT: Dict[str, Dict[str, Any]] = {
@@ -115,6 +116,13 @@ FEATURE_CONTRACT: Dict[str, Dict[str, Any]] = {
         "source": "Overpass OSM / Dynamic",
         "static_dynamic": "STATIC",
         "unit": "Binary/Fraction",
+        "expected_type": "float"
+    },
+    "api_rainfall": {
+        "semantic_meaning": "Antecedent Precipitation Index",
+        "source": "Calculated (Rain 3d/7d/15d)",
+        "static_dynamic": "DYNAMIC",
+        "unit": "mm",
         "expected_type": "float"
     }
 }
